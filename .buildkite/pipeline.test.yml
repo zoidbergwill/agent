@@ -3,7 +3,7 @@ steps:
     name: "🔨"
     command: "scripts/tests.sh"
     plugins:
-      - file:///Users/tim/Codez/buildkite/docker-compose-buildkite-plugin.git:
+      - file:///Users/tim/Codez/buildkite/docker-compose-buildkite-plugin:
           run: agent
 
   -
@@ -11,5 +11,5 @@ steps:
     command: "scripts/build-binaries.sh"
     artifact_paths: "pkg/*"
     plugins:
-      - file:///Users/tim/Codez/buildkite/docker-compose-buildkite-plugin.git:
+      - file:///Users/tim/Codez/buildkite/docker-compose-buildkite-plugin:
           run: agent
