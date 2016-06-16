@@ -578,12 +578,7 @@ func (b *Bootstrap) pluginHookPath(plugin *Plugin, name string) string {
 		exitf("%s", err)
 	}
 
-	dir, err := plugin.RepositorySubdirectory()
-	if err != nil {
-		exitf("%s", err)
-	}
-
-	return filepath.Join(b.PluginsPath, id, dir, name)
+	return filepath.Join(b.PluginsPath, id, "hooks", name)
 }
 
 // Executes a plugin hook gracefully

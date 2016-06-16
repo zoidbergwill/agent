@@ -77,14 +77,14 @@ func TestIdentifier(t *testing.T) {
 	var id string
 	var err error
 
-	plugin = &Plugin{Location: "github.com/buildkite/plugins/docker-compose/beta#master"}
+	plugin = &Plugin{Location: "github.com/buildkite/plugins/docker-compose#master"}
 	id, err = plugin.Identifier()
-	assert.Equal(t, id, "github-com-buildkite-plugins-docker-compose-beta-master")
+	assert.Equal(t, id, "github-com-buildkite-plugins-docker-compose-master")
 	assert.Nil(t, err)
 
-	plugin = &Plugin{Location: "github.com/buildkite/plugins/docker-compose/beta"}
+	plugin = &Plugin{Location: "github.com/buildkite/plugins/docker-compose"}
 	id, err = plugin.Identifier()
-	assert.Equal(t, id, "github-com-buildkite-plugins-docker-compose-beta")
+	assert.Equal(t, id, "github-com-buildkite-plugins-docker-compose")
 	assert.Nil(t, err)
 
 	plugin = &Plugin{Location: "192.168.0.1/foo.git#12341234"}
@@ -98,35 +98,19 @@ func TestIdentifier(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestRepositoryAndSubdirectory(t *testing.T) {
+func TestRepository(t *testing.T) {
 	var plugin *Plugin
 	var repo string
-	var sub string
 	var err error
-
-	plugin = &Plugin{Location: "github.com/buildkite/plugins/docker-compose/beta"}
-	repo, err = plugin.Repository()
-	assert.Equal(t, repo, "https://github.com/buildkite/plugins")
-	assert.Nil(t, err)
-	sub, err = plugin.RepositorySubdirectory()
-	assert.Equal(t, sub, "docker-compose/beta")
-	assert.Nil(t, err)
 
 	plugin = &Plugin{Location: "github.com/buildkite/test-plugin"}
 	repo, err = plugin.Repository()
 	assert.Equal(t, repo, "https://github.com/buildkite/test-plugin")
 	assert.Nil(t, err)
-	sub, err = plugin.RepositorySubdirectory()
-	assert.Equal(t, sub, "")
-	assert.Nil(t, err)
 
 	plugin = &Plugin{Location: "github.com/buildkite"}
 	repo, err = plugin.Repository()
 	assert.Equal(t, repo, "")
-	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), `Incomplete github.com path "github.com/buildkite"`)
-	sub, err = plugin.RepositorySubdirectory()
-	assert.Equal(t, sub, "")
 	assert.NotNil(t, err)
 	assert.Equal(t, err.Error(), `Incomplete github.com path "github.com/buildkite"`)
 
@@ -135,49 +119,25 @@ func TestRepositoryAndSubdirectory(t *testing.T) {
 	assert.Equal(t, repo, "")
 	assert.NotNil(t, err)
 	assert.Equal(t, err.Error(), `Incomplete bitbucket.org path "bitbucket.org/buildkite"`)
-	sub, err = plugin.RepositorySubdirectory()
-	assert.Equal(t, sub, "")
-	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), `Incomplete bitbucket.org path "bitbucket.org/buildkite"`)
 
-	plugin = &Plugin{Location: "bitbucket.org/user/project/sub/directory"}
+	plugin = &Plugin{Location: "bitbucket.org/user/project"}
 	repo, err = plugin.Repository()
 	assert.Equal(t, repo, "https://bitbucket.org/user/project")
 	assert.Nil(t, err)
-	sub, err = plugin.RepositorySubdirectory()
-	assert.Equal(t, sub, "sub/directory")
-	assert.Nil(t, err)
 
-	plugin = &Plugin{Location: "bitbucket.org/user/project/sub/directory", Scheme: "http", Authentication: "foo:bar"}
+	plugin = &Plugin{Location: "bitbucket.org/user/project", Scheme: "http", Authentication: "foo:bar"}
 	repo, err = plugin.Repository()
 	assert.Equal(t, repo, "http://foo:bar@bitbucket.org/user/project")
-	assert.Nil(t, err)
-	sub, err = plugin.RepositorySubdirectory()
-	assert.Equal(t, sub, "sub/directory")
 	assert.Nil(t, err)
 
 	plugin = &Plugin{Location: "114.135.234.212/foo.git"}
 	repo, err = plugin.Repository()
 	assert.Equal(t, repo, "https://114.135.234.212/foo.git")
 	assert.Nil(t, err)
-	sub, err = plugin.RepositorySubdirectory()
-	assert.Equal(t, sub, "")
-	assert.Nil(t, err)
 
-	plugin = &Plugin{Location: "github.com/buildkite/plugins/docker-compose/beta"}
+	plugin = &Plugin{Location: "/Users/keithpitt/Development/test-plugin.git"}
 	repo, err = plugin.Repository()
-	assert.Equal(t, repo, "https://github.com/buildkite/plugins")
-	assert.Nil(t, err)
-	sub, err = plugin.RepositorySubdirectory()
-	assert.Equal(t, sub, "docker-compose/beta")
-	assert.Nil(t, err)
-
-	plugin = &Plugin{Location: "/Users/keithpitt/Development/plugins.git/test-plugin"}
-	repo, err = plugin.Repository()
-	assert.Equal(t, repo, "/Users/keithpitt/Development/plugins.git")
-	assert.Nil(t, err)
-	sub, err = plugin.RepositorySubdirectory()
-	assert.Equal(t, sub, "test-plugin")
+	assert.Equal(t, repo, "/Users/keithpitt/Development/test-plugin.git")
 	assert.Nil(t, err)
 
 	plugin = &Plugin{Location: ""}

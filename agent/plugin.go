@@ -158,18 +158,6 @@ func (p *Plugin) Repository() (string, error) {
 	return s, nil
 }
 
-// Returns the subdirectory path that the plugin is in
-func (p *Plugin) RepositorySubdirectory() (string, error) {
-	repository, err := p.constructRepositoryHost()
-	if err != nil {
-		return "", err
-	}
-
-	dir := strings.TrimPrefix(p.Location, repository)
-
-	return strings.TrimPrefix(dir, "/"), nil
-}
-
 // Converts the plugin configuration values to environment variables
 func (p *Plugin) ConfigurationToEnvironment() (*shell.Environment, error) {
 	env := []string{}
