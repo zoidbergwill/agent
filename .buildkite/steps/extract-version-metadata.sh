@@ -4,6 +4,8 @@ set -euo pipefail
 
 echo '--- Downloading built agent'
 
+mkdir pkg
+
 buildkite-agent artifact download pkg/buildkite-agent-linux-386 pkg
 
 # Grab the version of the binary while we're here (we need it if we deploy this
