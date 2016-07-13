@@ -13,7 +13,7 @@ chmod +x pkg/buildkite-agent-linux-386
 # commit to GitHub)
 echo '+++ Extracting agent version from binary'
 
-FULL_AGENT_VERSION=`pkg/buildkite-agent-linux-386 --version`
+FULL_AGENT_VERSION=$(pkg/buildkite-agent-linux-386 --version)
 AGENT_VERSION=$(echo $FULL_AGENT_VERSION | sed 's/buildkite-agent version //' | sed -E 's/\, build .+//')
 BUILD_VERSION=$(echo $FULL_AGENT_VERSION | sed 's/buildkite-agent version .*, build //')
 
