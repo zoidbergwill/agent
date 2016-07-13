@@ -8,77 +8,77 @@ steps:
 
   - wait
 
-  - name: ":package: windows 386"
+  - name: ":package: :windows: 386"
     command: ".buildkite/steps/build-binary.sh windows 386"
     artifact_paths: "pkg/*"
     plugins:
       docker-compose#e8ce6c1:
         run: agent
 
-  - name: ":package: windows amd64"
+  - name: ":package: :windows: amd64"
     command: ".buildkite/steps/build-binary.sh windows amd64"
     artifact_paths: "pkg/*"
     plugins:
       docker-compose#e8ce6c1:
         run: agent
 
-  - name: ":package: linux amd64"
+  - name: ":package: :linux: amd64"
     command: ".buildkite/steps/build-binary.sh linux amd64"
     artifact_paths: "pkg/*"
     plugins:
       docker-compose#e8ce6c1:
         run: agent
 
-  - name: ":package: linux 386"
+  - name: ":package: :linux: 386"
     command: ".buildkite/steps/build-binary.sh linux 386"
     artifact_paths: "pkg/*"
     plugins:
       docker-compose#e8ce6c1:
         run: agent
 
-  - name: ":package: linux arm"
+  - name: ":package: :linux: arm"
     command: ".buildkite/steps/build-binary.sh linux arm"
     artifact_paths: "pkg/*"
     plugins:
       docker-compose#e8ce6c1:
         run: agent
 
-  - name: ":package: linux armhf"
+  - name: ":package: :linux: armhf"
     command: ".buildkite/steps/build-binary.sh linux armhf"
     artifact_paths: "pkg/*"
     plugins:
       docker-compose#e8ce6c1:
         run: agent
 
-  - name: ":package: linux arm64"
+  - name: ":package: :linux: arm64"
     command: ".buildkite/steps/build-binary.sh linux arm64"
     artifact_paths: "pkg/*"
     plugins:
       docker-compose#e8ce6c1:
         run: agent
 
-  - name: ":package: darwin 386"
+  - name: ":package: :mac: 386"
     command: ".buildkite/steps/build-binary.sh darwin 386"
     artifact_paths: "pkg/*"
     plugins:
       docker-compose#e8ce6c1:
         run: agent
 
-  - name: ":package: darwin amd64"
+  - name: ":package: :mac: amd64"
     command: ".buildkite/steps/build-binary.sh darwin amd64"
     artifact_paths: "pkg/*"
     plugins:
       docker-compose#e8ce6c1:
         run: agent
 
-  - name: ":package: freebsd amd64"
+  - name: ":package: :freebsd: amd64"
     command: ".buildkite/steps/build-binary.sh freebsd amd64"
     artifact_paths: "pkg/*"
     plugins:
       docker-compose#e8ce6c1:
         run: agent
 
-  - name: ":package: freebsd 386"
+  - name: ":package: :freebsd: 386"
     command: ".buildkite/steps/build-binary.sh freebsd 386"
     artifact_paths: "pkg/*"
     plugins:
@@ -88,7 +88,7 @@ steps:
   - wait
 
   - name: "Extract version metadata"
-    command: "scripts/extract-version-metadata.sh"
+    command: ".buildkite/steps/extract-version-metadata.sh"
 
   - wait
 
