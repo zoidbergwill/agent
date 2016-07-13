@@ -37,49 +37,49 @@ steps:
         run: agent
 
   - name: ":package: linux arm"
-    command: "scripts/build-binary.sh linux arm"
+    command: ".buildkite/steps/build-binary.sh linux arm"
     artifact_paths: "pkg/*"
     plugins:
       docker-compose#e8ce6c1:
         run: agent
 
   - name: ":package: linux armhf"
-    command: "scripts/build-binary.sh linux armhf"
+    command: ".buildkite/steps/build-binary.sh linux armhf"
     artifact_paths: "pkg/*"
     plugins:
       docker-compose#e8ce6c1:
         run: agent
 
   - name: ":package: linux arm64"
-    command: "scripts/build-binary.sh linux arm64"
+    command: ".buildkite/steps/build-binary.sh linux arm64"
     artifact_paths: "pkg/*"
     plugins:
       docker-compose#e8ce6c1:
         run: agent
 
   - name: ":package: darwin 386"
-    command: "scripts/build-binary.sh darwin 386"
+    command: ".buildkite/steps/build-binary.sh darwin 386"
     artifact_paths: "pkg/*"
     plugins:
       docker-compose#e8ce6c1:
         run: agent
 
   - name: ":package: darwin amd64"
-    command: "scripts/build-binary.sh darwin amd64"
+    command: ".buildkite/steps/build-binary.sh darwin amd64"
     artifact_paths: "pkg/*"
     plugins:
       docker-compose#e8ce6c1:
         run: agent
 
   - name: ":package: freebsd amd64"
-    command: "scripts/build-binary.sh freebsd amd64"
+    command: ".buildkite/steps/build-binary.sh freebsd amd64"
     artifact_paths: "pkg/*"
     plugins:
       docker-compose#e8ce6c1:
         run: agent
 
   - name: ":package: freebsd 386"
-    command: "scripts/build-binary.sh freebsd 386"
+    command: ".buildkite/steps/build-binary.sh freebsd 386"
     artifact_paths: "pkg/*"
     plugins:
       docker-compose#e8ce6c1:
