@@ -1,31 +1,94 @@
 steps:
 
-  - wait
-
-  - name: ":docker: :package:"
-    plugins:
-      docker-compose#e8ce6c1:
-        build: agent
-        image-repository: index.docker.io/buildkiteci/agent
-    agents:
-      queue: elastic-builders
-
-  - wait
-
-  -
-    name: "🔨"
-    command: "scripts/tests.sh"
+  - name: ":hammer:"
+    command: ".buildkite/steps/tests.sh"
     plugins:
       docker-compose#e8ce6c1:
         run: agent
 
-  -
-    name: "📦"
-    command: "scripts/build-binaries.sh"
+  - wait
+
+  - name: ":package: windows 386"
+    command: ".buildkite/steps/build-binary.sh windows 386"
     artifact_paths: "pkg/*"
     plugins:
       docker-compose#e8ce6c1:
         run: agent
+
+  - name: ":package: windows amd64"
+    command: ".buildkite/steps/build-binary.sh windows amd64"
+    artifact_paths: "pkg/*"
+    plugins:
+      docker-compose#e8ce6c1:
+        run: agent
+
+  - name: ":package: linux amd64"
+    command: ".buildkite/steps/build-binary.sh linux amd64"
+    artifact_paths: "pkg/*"
+    plugins:
+      docker-compose#e8ce6c1:
+        run: agent
+
+  - name: ":package: linux 386"
+    command: ".buildkite/steps/build-binary.sh linux 386"
+    artifact_paths: "pkg/*"
+    plugins:
+      docker-compose#e8ce6c1:
+        run: agent
+
+  - name: ":package: linux arm"
+    command: "scripts/build-binary.sh linux arm"
+    artifact_paths: "pkg/*"
+    plugins:
+      docker-compose#e8ce6c1:
+        run: agent
+
+  - name: ":package: linux armhf"
+    command: "scripts/build-binary.sh linux armhf"
+    artifact_paths: "pkg/*"
+    plugins:
+      docker-compose#e8ce6c1:
+        run: agent
+
+  - name: ":package: linux arm64"
+    command: "scripts/build-binary.sh linux arm64"
+    artifact_paths: "pkg/*"
+    plugins:
+      docker-compose#e8ce6c1:
+        run: agent
+
+  - name: ":package: darwin 386"
+    command: "scripts/build-binary.sh darwin 386"
+    artifact_paths: "pkg/*"
+    plugins:
+      docker-compose#e8ce6c1:
+        run: agent
+
+  - name: ":package: darwin amd64"
+    command: "scripts/build-binary.sh darwin amd64"
+    artifact_paths: "pkg/*"
+    plugins:
+      docker-compose#e8ce6c1:
+        run: agent
+
+  - name: ":package: freebsd amd64"
+    command: "scripts/build-binary.sh freebsd amd64"
+    artifact_paths: "pkg/*"
+    plugins:
+      docker-compose#e8ce6c1:
+        run: agent
+
+  - name: ":package: freebsd 386"
+    command: "scripts/build-binary.sh freebsd 386"
+    artifact_paths: "pkg/*"
+    plugins:
+      docker-compose#e8ce6c1:
+        run: agent
+
+  - wait
+
+  - name: "Extract version metadata"
+    command: "scripts/extract-version-metadata.sh"
 
   - wait
 
@@ -72,9 +135,9 @@ steps:
     command: "scripts/build-github-release.sh"
     artifact_paths: "releases/**/*"
     branches: "master 2-1-stable"
-    plugins:
-      docker-compose#e8ce6c1:
-        run: agent
+    agents:
+      # TODO: Remove
+      queue: "legacy-ci"
 
   - wait
 
