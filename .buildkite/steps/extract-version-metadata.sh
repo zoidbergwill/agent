@@ -2,9 +2,13 @@
 
 set -euo pipefail
 
+echo '--- Downloading built agent'
+
+buildkite-agent artifact download pkg/buildkite-agent-linux-386 pkg
+
 # Grab the version of the binary while we're here (we need it if we deploy this
 # commit to GitHub)
-echo '--- Saving agent version to build meta data'
+echo '+++ Extracting agent version from binary'
 
 FULL_AGENT_VERSION=`pkg/buildkite-agent-linux-386 --version`
 AGENT_VERSION=$(echo $FULL_AGENT_VERSION | sed 's/buildkite-agent version //' | sed -E 's/\, build .+//')
