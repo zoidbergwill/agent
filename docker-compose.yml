@@ -3,6 +3,8 @@ agent:
   working_dir: /go/src/github.com/buildkite/agent
   volumes:
     - ./:/go/src/github.com/buildkite/agent
+  environment:
+    BUILDKITE_BUILD_NUMBER:
 fpm:
   image: ruby:2.3
   working_dir: /app
