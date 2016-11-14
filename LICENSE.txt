@@ -1,4 +1,6 @@
-Copyright (c) 2014-2015 Keith Pitt, Buildkite Pty Ltd
+# Buildkite Agent
+
+Copyright (c) 2014-2016 Keith Pitt, Buildkite Pty Ltd
 
 MIT License
 
@@ -20,3 +22,37 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# Dependencies
+
+-  GoAMZ
+   https://github.com/AdRoll/goamz/blob/master/LICENSE
+   LGPLv3
+
+https://github.com/ErikDubbelboer/gspt
+
+https://github.com/aws/aws-sdk-go
+
+https://github.com/cloudfoundry-incubator/candiedyaml
+
+https://github.com/codegangsta/cli
+
+https://github.com/flynn-archive/go-shlex
+
+https://github.com/ghodss/YAML
+
+https://github.com/google/go-querystring
+
+https://github.com/kr/Pty
+
+https://github.com/mattn/go-shellwords
+
+https://github.com/mitchellh/go-homedir
+
+https://github.com/nightlyone/lockfile
+
+https://github.com/oleiade/reflections
+
+https://github.com/pborman/uuid
+
+https://github.com/stretchr/testify
