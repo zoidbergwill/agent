@@ -179,6 +179,8 @@ func (p *Process) Start() error {
 
 	// Wait until the process has finished. The returned error is nil if the command runs,
 	// has no problems copying stdin, stdout, and stderr, and exits with a zero exit status.
+	//
+	// Do not wait on this process anywhere else or this may fail.
 	waitResult := p.command.Wait()
 
 	// Close the line writer pipe
@@ -225,24 +227,11 @@ func (p *Process) Kill() error {
 		for checking {
 			logger.Debug("[Process] Checking to see if PID: %d is still alive", p.Pid)
 
-			foundProcess, err := os.FindProcess(p.Pid)
-
-			// Can't find the process at all
-			if err != nil {
-				logger.Debug("[Process] Could not find process with PID: %d", p.Pid)
-
+			// See if the process exit status has been collected in the main job
+			// runner routine
+			if !p.IsRunning() {
+				logger.Debug("[Process] Process with PID: %d has exited.", p.Pid)
 				break
-			}
-
-			// We have some information about the process
-			if foundProcess != nil {
-				processState, err := foundProcess.Wait()
-
-				if err != nil || processState.Exited() {
-					logger.Debug("[Process] Process with PID: %d has exited.", p.Pid)
-
-					break
-				}
 			}
 
 			// Retry in a moment
