@@ -55,13 +55,13 @@ var ArtifactShasumCommand = cli.Command{
 		cli.StringFlag{
 			Name:  "step",
 			Value: "",
-			Usage: "Scope the search to a paticular step by using either it's name of job ID",
+			Usage: "Scope the search to a job in the current build by `NAME` or `JOB_UUID`",
 		},
 		cli.StringFlag{
 			Name:   "build",
 			Value:  "",
 			EnvVar: "BUILDKITE_BUILD_ID",
-			Usage:  "The build that the artifacts were uploaded to",
+			Usage:  "Scope the search to `BUILD_UUID`",
 		},
 		AgentAccessTokenFlag,
 		EndpointFlag,

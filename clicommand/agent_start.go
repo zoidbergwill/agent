@@ -93,25 +93,25 @@ var AgentStartCommand = cli.Command{
 		cli.StringFlag{
 			Name:   "config",
 			Value:  "",
-			Usage:  "Path to a configuration file",
+			Usage:  "Load configuration file from `PATH`",
 			EnvVar: "BUILDKITE_AGENT_CONFIG",
 		},
 		cli.StringFlag{
 			Name:   "token",
 			Value:  "",
-			Usage:  "Your account agent token",
+			Usage:  "Your organization's agent `TOKEN`",
 			EnvVar: "BUILDKITE_AGENT_TOKEN",
 		},
 		cli.StringFlag{
 			Name:   "name",
 			Value:  "",
-			Usage:  "The name of the agent",
+			Usage:  "The `NAME` of the agent",
 			EnvVar: "BUILDKITE_AGENT_NAME",
 		},
 		cli.StringFlag{
 			Name:   "priority",
 			Value:  "",
-			Usage:  "The priority of the agent (higher priorities are assigned work first)",
+			Usage:  "The `PRIORITY` of the agent (higher priorities are assigned work first)",
 			EnvVar: "BUILDKITE_AGENT_PRIORITY",
 		},
 		cli.BoolFlag{
@@ -122,13 +122,13 @@ var AgentStartCommand = cli.Command{
 		cli.IntFlag{
 			Name:   "disconnect-after-job-timeout",
 			Value:  120,
-			Usage:  "When --disconnect-after-job is specified, the number of seconds to wait for a job before shutting down",
+			Usage:  "When --disconnect-after-job is specified, the number of `SECONDS` to wait for a job before shutting down",
 			EnvVar: "BUILDKITE_AGENT_DISCONNECT_AFTER_JOB_TIMEOUT",
 		},
 		cli.StringSliceFlag{
 			Name:   "tags",
 			Value:  &cli.StringSlice{},
-			Usage:  "Tags for the agent (default is \"queue=default\")",
+			Usage:  "Set a `TAG` for the agent (e.g. mobile=true). Can be specified multiple times.",
 			EnvVar: "BUILDKITE_AGENT_TAGS",
 		},
 		cli.BoolFlag{
@@ -149,37 +149,37 @@ var AgentStartCommand = cli.Command{
 		cli.StringFlag{
 			Name:   "git-clone-flags",
 			Value:  "-v",
-			Usage:  "Flags to pass to the \"git clone\" command",
+			Usage:  "Set the `FLAGS` when performing a \"git clone\"",
 			EnvVar: "BUILDKITE_GIT_CLONE_FLAGS",
 		},
 		cli.StringFlag{
 			Name:   "git-clean-flags",
 			Value:  "-fxdq",
-			Usage:  "Flags to pass to \"git clean\" command",
+			Usage:  "Set the `FLAGS` when performing a \"git clean\"",
 			EnvVar: "BUILDKITE_GIT_CLEAN_FLAGS",
 		},
 		cli.StringFlag{
 			Name:   "bootstrap-script",
 			Value:  "buildkite-agent bootstrap",
-			Usage:  "Path to the bootstrap script",
+			Usage:  "The `PATH` to the bootstrap executable",
 			EnvVar: "BUILDKITE_BOOTSTRAP_SCRIPT_PATH",
 		},
 		cli.StringFlag{
 			Name:   "build-path",
 			Value:  "",
-			Usage:  "Path to where the builds will run from",
+			Usage:  "The directory `PATH` where builds will be checked out",
 			EnvVar: "BUILDKITE_BUILD_PATH",
 		},
 		cli.StringFlag{
 			Name:   "hooks-path",
 			Value:  "",
-			Usage:  "Directory where the hook scripts are found",
+			Usage:  "The directory `PATH` to search for hook scripts",
 			EnvVar: "BUILDKITE_HOOKS_PATH",
 		},
 		cli.StringFlag{
 			Name:   "plugins-path",
 			Value:  "",
-			Usage:  "Directory where the plugins are saved to",
+			Usage:  "The directory `PATH` where plugins will be checked out",
 			EnvVar: "BUILDKITE_PLUGINS_PATH",
 		},
 		cli.BoolFlag{

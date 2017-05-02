@@ -43,7 +43,7 @@ var MetaDataExistsCommand = cli.Command{
 		cli.StringFlag{
 			Name:   "job",
 			Value:  "",
-			Usage:  "Which job should the meta-data be checked for",
+			Usage:  "The `JOB_UUID` for the job containing the artifact",
 			EnvVar: "BUILDKITE_JOB_ID",
 		},
 		AgentAccessTokenFlag,

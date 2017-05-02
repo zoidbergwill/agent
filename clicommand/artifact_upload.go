@@ -55,7 +55,7 @@ var ArtifactUploadCommand = cli.Command{
 		cli.StringFlag{
 			Name:   "job",
 			Value:  "",
-			Usage:  "Which job should the artifacts be uploaded to",
+			Usage:  "The `JOB_UUID` to upload the artifacts to",
 			EnvVar: "BUILDKITE_JOB_ID",
 		},
 		AgentAccessTokenFlag,
