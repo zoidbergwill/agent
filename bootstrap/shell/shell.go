@@ -42,7 +42,7 @@ type Shell struct {
 func New() (*Shell, error) {
 	wd, err := os.Getwd()
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to find current working directory: %v")
+		return nil, errors.Wrapf(err, "Failed to find current working directory")
 	}
 
 	return &Shell{
@@ -185,12 +185,12 @@ func (s *Shell) executeCommand(cmd *exec.Cmd, w io.Writer, silent bool) error {
 		cmd.Stdin = nil
 
 		if err := cmd.Start(); err != nil {
-			return errors.Wrapf(err, "Error starting `%s`: %v", cmdStr)
+			return errors.Wrapf(err, "Error starting `%s`", cmdStr)
 		}
 	}
 
 	if err := cmd.Wait(); err != nil {
-		return errors.Wrapf(err, "Error running `%s`: %v", cmdStr)
+		return errors.Wrapf(err, "Error running `%s`", cmdStr)
 	}
 
 	return nil
