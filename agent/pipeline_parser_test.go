@@ -3,6 +3,7 @@ package agent
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"testing"
 
@@ -37,7 +38,7 @@ steps:
     queue: default`)}.Parse()
 	assert.Nil(t, err)
 	j, err = json.Marshal(result)
-	assert.Equal(t, `{"base_step":{"agent_query_rules":["queue=default"],"type":"script"},"steps":[{"agent_query_rules":["queue=default"],"agents":{"queue":"default"},"command":"docker build .","name":":docker: building image","type":"script"}]}`, string(j))
+	assert.Equal(t, `{"base_step":{"agent_query_rules":["queue=default"],"type":"script"},"steps":[{"agent_query_rules":["queue=default"],"agents":{queue":"default"},"command":"docker build .","name":":docker: building image","type":"script"}]}`, string(j))
 
 	// It parses pipelines with .yaml filenames
 	result, err = PipelineParser{Filename: "awesome.yaml", Pipeline: []byte("steps:\n  - label: \"hello ${ENV_VAR_FRIEND}\""), Env: environ}.Parse()
@@ -144,6 +145,8 @@ func TestPipelineParserLoadsGlobalEnvBlockFirst(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	log.Printf("%s", result)
+
 	err = decodeIntoStruct(&decoded, result)
 	if err != nil {
 		t.Fatal(err)
@@ -196,4 +199,28 @@ func TestPipelineParserLoadsSystemEnvironment(t *testing.T) {
 	if decoded.Steps[0].Command != "echo absolutely" {
 		t.Fatalf("Unexpected: %q", decoded.Steps[0].Command)
 	}
+}
+
+const yamlPipelineWithEscapes = `
+steps:
+  - env:
+    BOOM: \
+`
+
+func TestPipelineParserHandlesEscapeCharactersInYAML(t *testing.T) {
+	var decoded struct {
+		Env map[string]string `json:"env"`
+	}
+
+	result, err := PipelineParser{Pipeline: []byte(yamlPipelineWithEscapes)}.Parse()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = decodeIntoStruct(&decoded, result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, decoded.Env["BOOM"], `\`)
 }

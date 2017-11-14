@@ -3,9 +3,9 @@ package agent
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 
 	"github.com/buildkite/agent/env"
@@ -31,11 +31,15 @@ func (p PipelineParser) Parse() (pipeline interface{}, err error) {
 		return nil, err
 	}
 
+	log.Printf("Inferred format")
+
 	// Unmarshal the pipeline into an actual data structure
 	unmarshaled, err := unmarshal(p.Pipeline, format)
 	if err != nil {
 		return nil, err
 	}
+
+	log.Printf("Unmarshalled")
 
 	// Preprocess any env that are defined in the top level block and place them into env for
 	// later interpolation. We do this a few times so that you can reference env vars in other env vars
@@ -47,12 +51,16 @@ func (p PipelineParser) Parse() (pipeline interface{}, err error) {
 		}
 	}
 
+	log.Printf("Interpolated env")
+
 	// Recursivly go through the entire pipeline and perform environment
 	// variable interpolation on strings
 	interpolated, err := p.interpolate(unmarshaled)
 	if err != nil {
 		return nil, err
 	}
+
+	log.Printf("Interpolated the rest")
 
 	return interpolated, nil
 }
@@ -136,133 +144,82 @@ func unmarshal(pipeline []byte, format string) (interface{}, error) {
 	return unmarshaled, nil
 }
 
-// interpolate function inspired from: https://gist.github.com/hvoecking/10772475
-
 func (p PipelineParser) interpolate(obj interface{}) (interface{}, error) {
 	// Make sure there's something actually to interpolate
 	if obj == nil {
 		return nil, nil
 	}
 
-	// Wrap the original in a reflect.Value
-	original := reflect.ValueOf(obj)
+	// walk the tree and interpolate
+	err := interpolateRecursive(&obj, func(value string) (string, error) {
+		log.Printf("Interpolating %v", value)
+		defer log.Printf("Done!")
+		return interpolate.Interpolate(p.Env, value)
+	})
 
-	// Make a copy that we'll add the new values to
-	copy := reflect.New(original.Type()).Elem()
-
-	err := p.interpolateRecursive(copy, original)
-	if err != nil {
-		return nil, err
-	}
-
-	// Remove the reflection wrapper
-	return copy.Interface(), nil
+	return obj, err
 }
 
-func (p PipelineParser) interpolateRecursive(copy, original reflect.Value) error {
-	switch original.Kind() {
-	// If it is a pointer we need to unwrap and call once again
-	case reflect.Ptr:
-		// To get the actual value of the original we have to call Elem()
-		// At the same time this unwraps the pointer so we don't end up in
-		// an infinite recursion
-		originalValue := original.Elem()
+// interpolateRecursive walks structures by iterating through slices and maps and applying an interpolator to strings
+func interpolateRecursive(obj *interface{}, interpolator func(s string) (string, error)) error {
+	if obj == nil {
+		return nil
+	}
 
-		// Check if the pointer is nil
-		if !originalValue.IsValid() {
-			return nil
-		}
+	log.Printf("%#v", *obj)
 
-		// Allocate a new object and set the pointer to it
-		copy.Set(reflect.New(originalValue.Type()))
-
-		// Unwrap the newly created pointer
-		err := p.interpolateRecursive(copy.Elem(), originalValue)
-		if err != nil {
-			return err
-		}
-
-	// If it is an interface (which is very similar to a pointer), do basically the
-	// same as for the pointer. Though a pointer is not the same as an interface so
-	// note that we have to call Elem() after creating a new object because otherwise
-	// we would end up with an actual pointer
-	case reflect.Interface:
-		// Get rid of the wrapping interface
-		originalValue := original.Elem()
-
-		// Check to make sure the interface isn't nil
-		if !originalValue.IsValid() {
-			return nil
-		}
-
-		// Create a new object. Now new gives us a pointer, but we want the value it
-		// points to, so we have to call Elem() to unwrap it
-		copyValue := reflect.New(originalValue.Type()).Elem()
-
-		err := p.interpolateRecursive(copyValue, originalValue)
-		if err != nil {
-			return err
-		}
-
-		copy.Set(copyValue)
-
-	// If it is a struct we interpolate each field
-	case reflect.Struct:
-		for i := 0; i < original.NumField(); i += 1 {
-			err := p.interpolateRecursive(copy.Field(i), original.Field(i))
-			if err != nil {
-				return err
-			}
-		}
-
-	// If it is a slice we create a new slice and interpolate each element
-	case reflect.Slice:
-		copy.Set(reflect.MakeSlice(original.Type(), original.Len(), original.Cap()))
-
-		for i := 0; i < original.Len(); i += 1 {
-			err := p.interpolateRecursive(copy.Index(i), original.Index(i))
-			if err != nil {
-				return err
-			}
-		}
-
-	// If it is a map we create a new map and interpolate each value
-	case reflect.Map:
-		copy.Set(reflect.MakeMap(original.Type()))
-
-		for _, key := range original.MapKeys() {
-			originalValue := original.MapIndex(key)
-
-			// New gives us a pointer, but again we want the value
-			copyValue := reflect.New(originalValue.Type()).Elem()
-			err := p.interpolateRecursive(copyValue, originalValue)
+	// walk through maps
+	if m, isMap := (*obj).(map[string]interface{}); isMap {
+		for k, v := range m {
+			// keys can be interpolated too
+			newK, err := interpolator(k)
 			if err != nil {
 				return err
 			}
 
-			// Also interpolate the key if it's a string
-			if key.Kind() == reflect.String {
-				interpolatedKey, err := interpolate.Interpolate(p.Env, key.Interface().(string))
+			// if the key changes, we need to update it
+			if newK != k {
+				delete(m, k)
+				m[newK] = v
+				k = newK
+			}
+
+			// handle string values
+			if str, isString := (v).(string); isString {
+				var err error
+				m[k], err = interpolator(str)
 				if err != nil {
 					return err
 				}
-				copy.SetMapIndex(reflect.ValueOf(interpolatedKey), copyValue)
-			} else {
-				copy.SetMapIndex(key, copyValue)
+				continue
+			}
+
+			if err = interpolateRecursive(&v, interpolator); err != nil {
+				return err
 			}
 		}
 
-	// If it is a string interpolate it (yay finally we're doing what we came for)
-	case reflect.String:
-		interpolated, err := interpolate.Interpolate(p.Env, original.Interface().(string))
-		if err != nil {
-			return err
-		}
-		copy.SetString(interpolated)
+		return nil
+	}
 
-	// And everything else will simply be taken from the original
-	default:
-		copy.Set(original)
+	// handle slices
+	if s, isSlice := (*obj).([]interface{}); isSlice {
+		for idx, v := range s {
+			// handle string values
+			if str, isString := (v).(string); isString {
+				var err error
+				s[idx], err = interpolator(str)
+				if err != nil {
+					return err
+				}
+			}
+
+			if err := interpolateRecursive(&v, interpolator); err != nil {
+				return err
+			}
+		}
+
+		return nil
 	}
 
 	return nil
