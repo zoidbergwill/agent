@@ -2,6 +2,7 @@
 
 set -eo pipefail
 
+build_id="9d6aadaa-cb3c-465f-9364-7f04633fda7"
 version=$(buildkite-agent meta-data get "agent-version")
 build=$(buildkite-agent meta-data get "agent-version-build")
 
@@ -9,11 +10,12 @@ if [[ "$CODENAME" == "experimental" ]]; then
   version="$version.$build"
 fi
 
-echo "--- :package: Downloading built binaries"
+echo "--- :package: Downloading built binaries from build "
 
 rm -rf pkg/*
-buildkite-agent artifact download "pkg/buildkite-agent-*" .
+buildkite-agent artifact download --build "${build_id}" "pkg/buildkite-agent-*" .
 cd pkg
+ls -alR
 
 echo "--- :s3: Publishing $version to download.buildkite.com"
 
@@ -23,13 +25,13 @@ for binary in *; do
   binary_s3_url="$s3_base_url/$version/$binary"
 
   echo "Publishing $binary to $binary_s3_url"
-  aws s3 --region "us-east-1" cp --acl "public-read" "$binary" "$binary_s3_url"
+  echo aws s3 --region "us-east-1" cp --acl "public-read" "$binary" "$binary_s3_url"
 
   echo "Calculating SHA256"
   sha256sum "$binary" | awk '{print $1}' > "$binary.sha256"
 
   echo "Publishing $binary.sha256 to $binary_s3_url.sha256"
-  aws s3 cp --region "us-east-1" --acl "public-read" --content-type "text/plain" "$binary.sha256" "$binary_s3_url.sha256"
+  echo aws s3 cp --region "us-east-1" --acl "public-read" --content-type "text/plain" "$binary.sha256" "$binary_s3_url.sha256"
 done
 
 echo "--- :s3: Copying /$version to /latest"
@@ -40,6 +42,6 @@ latest_s3_url="$s3_base_url/latest/"
 
 echo "Copying $latest_version_s3_url to $latest_s3_url"
 
-aws s3 cp --region "us-east-1" --acl "public-read" --recursive "$latest_version_s3_url" "$latest_s3_url"
+echo aws s3 cp --region "us-east-1" --acl "public-read" --recursive "$latest_version_s3_url" "$latest_s3_url"
 
 echo "--- :llama::sparkles::llama: All done!"

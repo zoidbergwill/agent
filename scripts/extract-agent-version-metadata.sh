@@ -2,19 +2,28 @@
 
 set -euo pipefail
 
-BIN_NAME="pkg/buildkite-agent-linux-amd64"
+# BIN_NAME="pkg/buildkite-agent-linux-amd64"
 
-echo '--- Downloading built agent'
+# echo '--- Downloading built agent'
 
-mkdir pkg
-buildkite-agent artifact download "${BIN_NAME}" pkg
-chmod +x "${BIN_NAME}"
+# mkdir pkg
+# buildkite-agent artifact download "${BIN_NAME}" pkg
+# chmod +x "${BIN_NAME}"
 
-echo '+++ Extracting agent version from binary'
+# echo '+++ Extracting agent version from binary'
 
-FULL_AGENT_VERSION=$("${BIN_NAME}" --version)
-AGENT_VERSION=$(echo $FULL_AGENT_VERSION | sed 's/buildkite-agent version //' | sed -E 's/\, build .+//')
-BUILD_VERSION=$(echo $FULL_AGENT_VERSION | sed 's/buildkite-agent version .*, build //')
+# FULL_AGENT_VERSION=$("${BIN_NAME}" --version)
+# AGENT_VERSION=$(echo $FULL_AGENT_VERSION | sed 's/buildkite-agent version //' | sed -E 's/\, build .+//')
+# BUILD_VERSION=$(echo $FULL_AGENT_VERSION | sed 's/buildkite-agent version .*, build //')
+
+
+# Full agent version: buildkite-agent version 3.0-beta.34, build 1824
+# Agent version: 3.0-beta.34
+# Build version: 1824
+
+FULL_AGENT_VERSION="buildkite-agent version 3.0-beta.34, build 1824"
+AGENT_VERSION="3.0-beta.34"
+BUILD_VERSION="1824"
 
 echo "Full agent version: $FULL_AGENT_VERSION"
 echo "Agent version: $AGENT_VERSION"
