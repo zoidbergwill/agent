@@ -2,7 +2,6 @@
 
 set -eo pipefail
 
-build_id="9d6aadaa-cb3c-465f-9364-7f04633fda7"
 version=$(buildkite-agent meta-data get "agent-version")
 build=$(buildkite-agent meta-data get "agent-version-build")
 
@@ -13,7 +12,7 @@ fi
 echo "--- :package: Downloading built binaries from build "
 
 rm -rf pkg/*
-buildkite-agent artifact download --build "${build_id}" "pkg/buildkite-agent-*" .
+buildkite-agent artifact download --build "${build}" "pkg/buildkite-agent-*" .
 cd pkg
 ls -alR
 
