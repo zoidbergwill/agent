@@ -41,7 +41,7 @@ echo "steps:"
 git fetch --tags
 
 ## only allow a release if a release tag for it doesn't exist
-if ! git rev-parse -q --verify "refs/tags/v${agent_version}" >/dev/null; then
+if git rev-parse -q --verify "refs/tags/v${agent_version}" >/dev/null; then
   exit 0
 fi
 
