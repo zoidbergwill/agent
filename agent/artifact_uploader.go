@@ -121,6 +121,9 @@ func (a *ArtifactUploader) Collect() (artifacts []*api.Artifact, err error) {
 				return nil, err
 			}
 
+			// Normalize the relative path to always use forward slashes
+			path = filepath.ToSlash(path)
+
 			// Build an artifact object using the paths we have.
 			artifact, err := a.build(path, absolutePath, globPath)
 			if err != nil {
