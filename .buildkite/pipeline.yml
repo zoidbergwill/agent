@@ -2,6 +2,11 @@ env:
   DRY_RUN: false # set to true to disable publishing releases
 
 steps:
+  - name: ":notebook: gometalinter"
+    command: "scripts/lint.sh"
+
+  - wait
+
   - name: ":hammer: :linux:"
     command: "scripts/tests.sh"
     plugins:
