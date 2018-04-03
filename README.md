@@ -1,7 +1,5 @@
 # Buildkite Agent ![Build status](https://badge.buildkite.com/08e4e12a0a1e478f0994eb1e8d51822c5c74d395.svg?branch=master)
 
-_Note: This is the 3.0 development branch of the buildkite-agent, and may not contain files or code in the current stable release. To see code or submit PRs for stable agent versions, please use the corresponding maintenance branch: [2.6.x](https://github.com/buildkite/agent/tree/2-6-stable)_.
-
 The buildkite-agent is a small, reliable, and cross-platform build runner that makes it easy to run automated builds on your own infrastructure. It’s main responsibilities are polling [buildkite.com](https://buildkite.com/) for work, running build jobs, reporting back the status code and output log of the job, and uploading the job's artifacts.
 
 Full documentation is available at [buildkite.com/docs/agent](https://buildkite.com/docs/agent)
@@ -111,4 +109,4 @@ govendor fetch github.com/buildkite/go-buildkite@v2.0.0
 
 ## Copyright
 
-Copyright (c) 2014-2017 Buildkite Pty Ltd. See [LICENSE](./LICENSE.txt) for details.
+Copyright (c) 2014-2018 Buildkite Pty Ltd. See [LICENSE](./LICENSE.txt) for details.
