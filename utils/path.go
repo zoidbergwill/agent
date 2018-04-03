@@ -23,13 +23,17 @@ func NormalizeFilePath(path string) (string, error) {
 		return "", err
 	}
 
-	// make sure its absolute
-	absolutePath, err := filepath.Abs(path)
-	if err != nil {
-		return "", err
+	// if the file exists, absolute it
+	if _, err := os.Stat(path); err == nil {
+		// make sure its absolute
+		absolutePath, err := filepath.Abs(path)
+		if err != nil {
+			return "", err
+		}
+		path = absolutePath
 	}
 
-	return absolutePath, nil
+	return path, nil
 }
 
 // ExpandHome expands the path to include the home directory if the path
