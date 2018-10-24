@@ -2,154 +2,131 @@ env:
   DRY_RUN: false # set to true to disable publishing releases
 
 steps:
-  - name: ":hammer: :linux:"
-    command: ".buildkite/steps/tests.sh"
-    plugins:
-      docker-compose#v1.8.0:
-        run: agent
+  - group: "Tests"
+    steps:
+      - label: ":linux: Linux"
+        command: ".buildkite/steps/tests.sh"
+        plugins:
+          docker-compose#v1.8.0:
+            run: agent
 
-  - name: ":hammer: :windows:"
-    trigger: agent-windows
-    async: true
-    build:
-      message: "${BUILDKITE_MESSAGE}"
-      commit: "${BUILDKITE_COMMIT}"
-      branch: "${BUILDKITE_BRANCH}"
-
-  - wait
-
-  - name: ":windows: 386"
-    command: ".buildkite/steps/build-binary.sh windows 386"
-    artifact_paths: "pkg/*"
-    plugins:
-      docker-compose#v1.8.0:
-        run: agent
-
-  - name: ":windows: amd64"
-    command: ".buildkite/steps/build-binary.sh windows amd64"
-    artifact_paths: "pkg/*"
-    plugins:
-      docker-compose#v1.8.0:
-        run: agent
-
-  - name: ":linux: amd64"
-    command: ".buildkite/steps/build-binary.sh linux amd64"
-    artifact_paths: "pkg/*"
-    plugins:
-      docker-compose#v1.8.0:
-        run: agent
-
-  - name: ":linux: 386"
-    command: ".buildkite/steps/build-binary.sh linux 386"
-    artifact_paths: "pkg/*"
-    plugins:
-      docker-compose#v1.8.0:
-        run: agent
-
-  - name: ":linux: arm"
-    command: ".buildkite/steps/build-binary.sh linux arm"
-    artifact_paths: "pkg/*"
-    plugins:
-      docker-compose#v1.8.0:
-        run: agent
-
-  - name: ":linux: armhf"
-    command: ".buildkite/steps/build-binary.sh linux armhf"
-    artifact_paths: "pkg/*"
-    plugins:
-      docker-compose#v1.8.0:
-        run: agent
-
-  - name: ":linux: arm64"
-    command: ".buildkite/steps/build-binary.sh linux arm64"
-    artifact_paths: "pkg/*"
-    plugins:
-      docker-compose#v1.8.0:
-        run: agent
-
-  - name: ":mac: 386"
-    command: ".buildkite/steps/build-binary.sh darwin 386"
-    artifact_paths: "pkg/*"
-    plugins:
-      docker-compose#v1.8.0:
-        run: agent
-
-  - name: ":mac: amd64"
-    command: ".buildkite/steps/build-binary.sh darwin amd64"
-    artifact_paths: "pkg/*"
-    plugins:
-      docker-compose#v1.8.0:
-        run: agent
-
-  - name: ":freebsd: amd64"
-    command: ".buildkite/steps/build-binary.sh freebsd amd64"
-    artifact_paths: "pkg/*"
-    plugins:
-      docker-compose#v1.8.0:
-        run: agent
-
-  - name: ":freebsd: 386"
-    command: ".buildkite/steps/build-binary.sh freebsd 386"
-    artifact_paths: "pkg/*"
-    plugins:
-      docker-compose#v1.8.0:
-        run: agent
-
-  - name: ":openbsd: amd64"
-    command: ".buildkite/steps/build-binary.sh openbsd amd64"
-    artifact_paths: "pkg/*"
-    plugins:
-      docker-compose#v1.8.0:
-        run: agent
-
-  - name: ":openbsd: 386"
-    command: ".buildkite/steps/build-binary.sh openbsd 386"
-    artifact_paths: "pkg/*"
-    plugins:
-      docker-compose#v1.8.0:
-        run: agent
-
-  - name: ":dragonflybsd: amd64"
-    command: ".buildkite/steps/build-binary.sh dragonfly amd64"
-    artifact_paths: "pkg/*"
-    plugins:
-      docker-compose#v1.8.0:
-        run: agent
+      - label: ":windows: Windows"
+        trigger: agent-windows
+        async: true
+        build:
+          message: "${BUILDKITE_MESSAGE}"
+          commit: "${BUILDKITE_COMMIT}"
+          branch: "${BUILDKITE_BRANCH}"
 
   - wait
 
-  - name: ":mag:"
+  - group: "Build"
+    steps:
+    - label: ":windows: Windows"
+      command: ".buildkite/steps/build-binary.sh windows \${BUILDKITE_MATRIX_ARCH}"
+      matrix:
+        arch:
+         - "386"
+         - "amd64"
+      artifact_paths: "pkg/*"
+      plugins:
+        docker-compose#v1.8.0:
+          run: agent
+
+    - label: ":linux: Linux"
+      command: ".buildkite/steps/build-binary.sh linux \${BUILDKITE_MATRIX_ARCH}"
+      matrix:
+        arch:
+          - "amd64"
+          - "386"
+          - "arm"
+          - "armhf"
+          - "arm64"
+      artifact_paths: "pkg/*"
+      plugins:
+        docker-compose#v1.8.0:
+          run: agent
+
+    - label: ":mac: macOS"
+      command: ".buildkite/steps/build-binary.sh darwin \${BUILDKITE_MATRIX_ARCH}"
+      matrix:
+        arch:
+         - "386"
+         - "amd64"
+      artifact_paths: "pkg/*"
+      plugins:
+        docker-compose#v1.8.0:
+          run: agent
+
+    - label: ":freebsd: FreeBSD"
+      matrix:
+        arch:
+          - "amd64"
+          - "386"
+      artifact_paths: "pkg/*"
+      plugins:
+        docker-compose#v1.8.0:
+          run: agent
+
+    - label: ":openbsd: OpenBSD"
+      command: ".buildkite/steps/build-binary.sh openbsd \${BUILDKITE_MATRIX_ARCH}"
+      matrix:
+        arch:
+          - "amd64"
+          - "386"
+      artifact_paths: "pkg/*"
+      plugins:
+        docker-compose#v1.8.0:
+          run: agent
+
+    - label: ":dragonflybsd: amd64"
+      command: ".buildkite/steps/build-binary.sh dragonfly \${BUILDKITE_MATRIX_ARCH}"
+      matrix:
+        arch:
+          - "amd64"
+          - "386"
+      artifact_paths: "pkg/*"
+      plugins:
+        docker-compose#v1.8.0:
+          run: agent
+
+  - wait
+
+  - label: ":mag: Extract Version"
     command: ".buildkite/steps/extract-agent-version-metadata.sh"
 
   - wait
 
-  - name: ":docker: alpine build"
-    command: ".buildkite/steps/build-docker-image.sh alpine"
+  - group: "Package "
+    steps:
+      - label: ":docker: Docker"
+        command: ".buildkite/steps/build-docker-image.sh \${BUILDKITE_MATRIX_IMAGE}"
+        matrix:
+          image:
+            - "alpine"
+            - "ubuntu"
 
-  - name: ":docker: ubuntu build"
-    command: ".buildkite/steps/build-docker-image.sh ubuntu"
+      - label: ":debian: Debian"
+        command: ".buildkite/steps/build-debian-packages.sh"
+        artifact_paths: "deb/**/*"
+        agents:
+          queue: "deploy"
 
-  - name: ":debian: build"
-    command: ".buildkite/steps/build-debian-packages.sh"
-    artifact_paths: "deb/**/*"
-    agents:
-      queue: "deploy"
+      - label: ":redhat: Red Hat"
+        command: ".buildkite/steps/build-rpm-packages.sh"
+        artifact_paths: "rpm/**/*"
+        agents:
+          queue: "deploy"
 
-  - name: ":redhat: build"
-    command: ".buildkite/steps/build-rpm-packages.sh"
-    artifact_paths: "rpm/**/*"
-    agents:
-      queue: "deploy"
-
-  - name: ":github: :hammer:"
-    command: ".buildkite/steps/build-github-release.sh"
-    artifact_paths: "releases/**/*"
-    plugins:
-      docker-compose#v1.8.0:
-        config: docker-compose.release.yml
-        run: github-release
+      - label: ":github: GitHub Release"
+        command: ".buildkite/steps/build-github-release.sh"
+        artifact_paths: "releases/**/*"
+        plugins:
+          docker-compose#v1.8.0:
+            config: docker-compose.release.yml
+            run: github-release
 
   - wait
 
-  - name: ":pipeline:"
+  - label: ":pipeline: Prepare Release"
     command: ".buildkite/steps/upload-release-steps.sh"
