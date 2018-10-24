@@ -7,7 +7,6 @@ import (
 
 	"github.com/buildkite/agent/bootstrap/shell"
 	"github.com/buildkite/bintest"
-	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -49,9 +48,13 @@ func TestSSHKeyscanReturnsOutput(t *testing.T) {
 		AndExitWith(0)
 
 	keyScanOutput, err := sshKeyScan(sh, "github.com")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	assert.Equal(t, keyScanOutput, "github.com ssh-rsa xxx=")
-	assert.NoError(t, err)
+	if keyScanOutput != "github.com ssh-rsa xxx=" {
+		t.Error("bad key scan output", keyScanOutput)
+	}
 }
 
 func TestSSHKeyscanWithHostAndPortReturnsOutput(t *testing.T) {
@@ -73,9 +76,13 @@ func TestSSHKeyscanWithHostAndPortReturnsOutput(t *testing.T) {
 		AndExitWith(0)
 
 	keyScanOutput, err := sshKeyScan(sh, "github.com:123")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	assert.Equal(t, keyScanOutput, "github.com ssh-rsa xxx=")
-	assert.NoError(t, err)
+	if keyScanOutput != "github.com ssh-rsa xxx=" {
+		t.Error("bad key scan output", keyScanOutput)
+	}
 }
 
 func TestSSHKeyscanRetriesOnExit1(t *testing.T) {
@@ -99,8 +106,13 @@ func TestSSHKeyscanRetriesOnExit1(t *testing.T) {
 
 	keyScanOutput, err := sshKeyScan(sh, "github.com")
 
-	assert.Equal(t, keyScanOutput, "")
-	assert.EqualError(t, err, "`ssh-keyscan \"github.com\"` failed")
+	if keyScanOutput != "" {
+		t.Error("bad keyscan output", keyScanOutput)
+	}
+
+	if err == nil || err.Error() != "`ssh-keyscan \"github.com\"` failed" {
+		t.Error("bad error from keyscan", err)
+	}
 }
 
 func TestSSHKeyscanRetriesOnBlankOutputAndExit0(t *testing.T) {
@@ -124,6 +136,11 @@ func TestSSHKeyscanRetriesOnBlankOutputAndExit0(t *testing.T) {
 
 	keyScanOutput, err := sshKeyScan(sh, "github.com")
 
-	assert.Equal(t, keyScanOutput, "")
-	assert.EqualError(t, err, "`ssh-keyscan \"github.com\"` returned nothing")
+	if keyScanOutput != "" {
+		t.Error("bad keyscan output", keyScanOutput)
+	}
+
+	if err == nil || err.Error() != "`ssh-keyscan \"github.com\"` returned nothing" {
+		t.Error("bad error from keyscan", err)
+	}
 }

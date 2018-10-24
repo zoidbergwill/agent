@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/buildkite/agent/api"
-	"github.com/stretchr/testify/assert"
 )
 
 func findArtifact(artifacts []*api.Artifact, search string) *api.Artifact {
@@ -44,7 +43,9 @@ func TestCollect(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, len(artifacts), 4)
+	if l := len(artifacts); l != 4 {
+		t.Error("got wrong artifact length", l)
+	}
 
 	var testCases = []struct {
 		Name         string
@@ -95,11 +96,25 @@ func TestCollect(t *testing.T) {
 				t.Fatalf("Failed to find artifact %q", tc.Name)
 			}
 
-			assert.Equal(t, tc.Path, a.Path)
-			assert.Equal(t, tc.AbsolutePath, a.AbsolutePath)
-			assert.Equal(t, tc.GlobPath, a.GlobPath)
-			assert.Equal(t, tc.FileSize, int(a.FileSize))
-			assert.Equal(t, tc.Sha1Sum, a.Sha1Sum)
+			if tc.Path != a.Path {
+				t.Error("got wrong artifact path", tc.Path)
+			}
+
+			if tc.AbsolutePath != a.AbsolutePath {
+				t.Error("got wrong artifact absolute path", tc.AbsolutePath)
+			}
+
+			if tc.GlobPath != a.GlobPath {
+				t.Error("got wrong artifact glob path", tc.GlobPath)
+			}
+
+			if tc.FileSize != int(a.FileSize) {
+				t.Error("got wrong artifact file size", tc.FileSize)
+			}
+
+			if tc.Sha1Sum != a.Sha1Sum {
+				t.Error("got wrong artifact shasum", tc.Sha1Sum)
+			}
 		})
 	}
 }
@@ -122,7 +137,9 @@ func TestCollectThatDoesntMatchAnyFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, len(artifacts), 0)
+	if l := len(artifacts); l != 0 {
+		t.Error("got wrong artifact length", l)
+	}
 }
 
 func TestCollectWithSomeGlobsThatDontMatchAnything(t *testing.T) {

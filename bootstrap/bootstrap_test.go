@@ -2,8 +2,6 @@ package bootstrap
 
 import (
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 var agentNameTests = []struct {
@@ -19,6 +17,8 @@ func TestDirForAgentName(t *testing.T) {
 	t.Parallel()
 
 	for _, test := range agentNameTests {
-		assert.Equal(t, test.expected, dirForAgentName(test.agentName))
+		if d := dirForAgentName(test.agentName); d != test.expected {
+			t.Fatal("bad dir for agent name", d)
+		}
 	}
 }

@@ -3,13 +3,11 @@ package agent
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/buildkite/agent/env"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestPipelineParserParsesYaml(t *testing.T) {
@@ -20,9 +18,11 @@ func TestPipelineParserParsesYaml(t *testing.T) {
 		Pipeline: []byte("steps:\n  - label: \"hello ${ENV_VAR_FRIEND}\""),
 		Env:      environ}.Parse()
 
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	j, err := json.Marshal(result)
-	assert.Equal(t, `{"steps":[{"label":"hello \"friend\""}]}`, string(j))
+	assertJSONEqual(t, `{"steps":[{"label":"hello \"friend\""}]}`, string(j))
 }
 
 func TestPipelineParserParsesYamlWithNoInterpolation(t *testing.T) {
@@ -32,9 +32,11 @@ func TestPipelineParserParsesYamlWithNoInterpolation(t *testing.T) {
 		NoInterpolation: true,
 	}.Parse()
 
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	j, err := json.Marshal(result)
-	assert.Equal(t, `{"steps":[{"label":"hello ${ENV_VAR_FRIEND}"}]}`, string(j))
+	assertJSONEqual(t, `{"steps":[{"label":"hello ${ENV_VAR_FRIEND}"}]}`, string(j))
 }
 
 func TestPipelineParserSupportsYamlMergesAndAnchors(t *testing.T) {
@@ -55,19 +57,31 @@ steps:
 		Filename: "awesome.yml",
 		Pipeline: []byte(complexYAML)}.Parse()
 
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	j, err := json.Marshal(result)
-	assert.Equal(t, `{"base_step":{"type":"script","agent_query_rules":["queue=default"]},"steps":[{"type":"script","agent_query_rules":["queue=default"],"name":":docker: building image","command":"docker build .","agents":{"queue":"default"}}]}`, string(j))
+	assertJSONEqual(t, `{"base_step":{"type":"script","agent_query_rules":["queue=default"]},"steps":[{"type":"script","agent_query_rules":["queue=default"],"name":":docker: building image","command":"docker build .","agents":{"queue":"default"}}]}`, string(j))
 }
 
 func TestPipelineParserReturnsYamlParsingErrors(t *testing.T) {
 	_, err := PipelineParser{Filename: "awesome.yml", Pipeline: []byte("steps: %blah%")}.Parse()
-	assert.Error(t, err, `Failed to parse awesome.yml: found character that cannot start any token`, fmt.Sprintf("%s", err))
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if err.Error() != `Failed to parse awesome.yml: found character that cannot start any token` {
+		t.Fatal("bad error message", err)
+	}
 }
 
 func TestPipelineParserReturnsJsonParsingErrors(t *testing.T) {
 	_, err := PipelineParser{Filename: "awesome.json", Pipeline: []byte("{")}.Parse()
-	assert.Error(t, err, `Failed to parse awesome.json: line 1: did not find expected node content`, fmt.Sprintf("%s", err))
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if err.Error() != `Failed to parse awesome.json: line 1: did not find expected node content` {
+		t.Fatal("bad error message", err)
+	}
 }
 
 func TestPipelineParserParsesJson(t *testing.T) {
@@ -78,69 +92,87 @@ func TestPipelineParserParsesJson(t *testing.T) {
 		Pipeline: []byte("\n\n     \n  { \"foo\": \"bye ${ENV_VAR_FRIEND}\" }\n"),
 		Env:      environ}.Parse()
 
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	j, err := json.Marshal(result)
-	assert.Equal(t, `{"foo":"bye \"friend\""}`, string(j))
+	assertJSONEqual(t, `{"foo":"bye \"friend\""}`, string(j))
 }
 
 func TestPipelineParserParsesJsonObjects(t *testing.T) {
 	environ := env.FromSlice([]string{`ENV_VAR_FRIEND="friend"`})
 
 	result, err := PipelineParser{Pipeline: []byte("\n\n     \n  { \"foo\": \"bye ${ENV_VAR_FRIEND}\" }\n"), Env: environ}.Parse()
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	j, err := json.Marshal(result)
-	assert.Equal(t, `{"foo":"bye \"friend\""}`, string(j))
+	assertJSONEqual(t, `{"foo":"bye \"friend\""}`, string(j))
 }
 
 func TestPipelineParserParsesJsonArrays(t *testing.T) {
 	environ := env.FromSlice([]string{`ENV_VAR_FRIEND="friend"`})
 
 	result, err := PipelineParser{Pipeline: []byte("\n\n     \n  [ { \"foo\": \"bye ${ENV_VAR_FRIEND}\" } ]\n"), Env: environ}.Parse()
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	j, err := json.Marshal(result)
-	assert.Equal(t, `{"steps":[{"foo":"bye \"friend\""}]}`, string(j))
+	assertJSONEqual(t, `{"steps":[{"foo":"bye \"friend\""}]}`, string(j))
 }
 
 func TestPipelineParserParsesTopLevelSteps(t *testing.T) {
 	result, err := PipelineParser{Pipeline: []byte("---\n- name: Build\n  command: echo hello world\n- wait\n"), Env: nil}.Parse()
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	j, err := json.Marshal(result)
-	assert.Equal(t, `{"steps":[{"name":"Build","command":"echo hello world"},"wait"]}`, string(j))
+	assertJSONEqual(t, `{"steps":[{"name":"Build","command":"echo hello world"},"wait"]}`, string(j))
 }
 
 func TestPipelineParserPreservesBools(t *testing.T) {
 	result, err := PipelineParser{Pipeline: []byte("steps:\n  - trigger: hello\n    async: true")}.Parse()
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	j, err := json.Marshal(result)
-	assert.Equal(t, `{"steps":[{"trigger":"hello","async":true}]}`, string(j))
+	assertJSONEqual(t, `{"steps":[{"trigger":"hello","async":true}]}`, string(j))
 }
 
 func TestPipelineParserPreservesInts(t *testing.T) {
 	result, err := PipelineParser{Pipeline: []byte("steps:\n  - label: hello\n    parallelism: 10")}.Parse()
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	j, err := json.Marshal(result)
-	assert.Equal(t, `{"steps":[{"label":"hello","parallelism":10}]}`, string(j))
+	assertJSONEqual(t, `{"steps":[{"label":"hello","parallelism":10}]}`, string(j))
 }
 
 func TestPipelineParserPreservesNull(t *testing.T) {
 	result, err := PipelineParser{Pipeline: []byte("steps:\n  - wait: ~")}.Parse()
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	j, err := json.Marshal(result)
-	assert.Equal(t, `{"steps":[{"wait":null}]}`, string(j))
+	assertJSONEqual(t, `{"steps":[{"wait":null}]}`, string(j))
 }
 
 func TestPipelineParserPreservesFloats(t *testing.T) {
 	result, err := PipelineParser{Pipeline: []byte("steps:\n  - trigger: hello\n    llamas: 3.142")}.Parse()
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	j, err := json.Marshal(result)
-	assert.Equal(t, `{"steps":[{"trigger":"hello","llamas":3.142}]}`, string(j))
+	assertJSONEqual(t, `{"steps":[{"trigger":"hello","llamas":3.142}]}`, string(j))
 }
 
 func TestPipelineParserHandlesDates(t *testing.T) {
 	result, err := PipelineParser{Pipeline: []byte("steps:\n  - trigger: hello\n    llamas: 2002-08-15T17:18:23.18-06:00")}.Parse()
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	j, err := json.Marshal(result)
-	assert.Equal(t, `{"steps":[{"trigger":"hello","llamas":"2002-08-15T17:18:23.18-06:00"}]}`, string(j))
+	assertJSONEqual(t, `{"steps":[{"trigger":"hello","llamas":"2002-08-15T17:18:23.18-06:00"}]}`, string(j))
 }
 
 func TestPipelineParserInterpolatesKeysAsWellAsValues(t *testing.T) {
@@ -167,8 +199,13 @@ func TestPipelineParserInterpolatesKeysAsWellAsValues(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, `MyTest`, decoded.Env["llamasTEST1"])
-	assert.Equal(t, `llamas`, decoded.Env["TEST2"])
+	if e := decoded.Env["llamasTEST1"]; e != `MyTest` {
+		t.Fatal("bad decoded env", e)
+	}
+
+	if e := decoded.Env["TEST2"]; e != `llamas` {
+		t.Fatal("bad decoded env", e)
+	}
 }
 
 func TestPipelineParserLoadsGlobalEnvBlockFirst(t *testing.T) {
@@ -202,9 +239,17 @@ func TestPipelineParserLoadsGlobalEnvBlockFirst(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, `England`, decoded.Env["TEAM1"])
-	assert.Equal(t, `England smashes Australia to win the ashes in 1912!!`, decoded.Env["HEADLINE"])
-	assert.Equal(t, `echo England smashes Australia to win the ashes in 1912!!`, decoded.Steps[0].Command)
+	if e := decoded.Env["TEAM1"]; e != `England` {
+		t.Fatal("bad decoded env", e)
+	}
+
+	if e := decoded.Env["HEADLINE"]; e != `England smashes Australia to win the ashes in 1912!!` {
+		t.Fatal("bad decoded env", e)
+	}
+
+	if e := decoded.Steps[0].Command; e != `echo England smashes Australia to win the ashes in 1912!!` {
+		t.Fatal("bad decoded env", e)
+	}
 }
 
 func decodeIntoStruct(into interface{}, from interface{}) error {
@@ -285,5 +330,13 @@ steps:
 	}
 
 	expected := `{"steps":[{"name":":s3: xxx","command":"script/buildkite/xxx.sh","plugins":{"xxx/aws-assume-role#v0.1.0":{"role":"arn:aws:iam::xxx:role/xxx"},"ecr#v1.1.4":{"login":true,"account_ids":"xxx","registry_region":"us-east-1"},"docker-compose#v2.5.1":{"run":"xxx","config":".buildkite/docker/docker-compose.yml","env":["AWS_ACCESS_KEY_ID","AWS_SECRET_ACCESS_KEY","AWS_SESSION_TOKEN"]}},"agents":{"queue":"xxx"}}]}`
-	assert.Equal(t, expected, strings.TrimSpace(buf.String()))
+	assertJSONEqual(t, expected, strings.TrimSpace(buf.String()))
+}
+
+func assertJSONEqual(t *testing.T, expected, actual string) {
+	t.Helper()
+
+	if expected != actual {
+		t.Fatalf("Expected json to be %s, got %s", expected, actual)
+	}
 }

@@ -1,10 +1,10 @@
 package plugin
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/qri-io/jsonschema"
-	"github.com/stretchr/testify/assert"
 )
 
 var testPluginDef = `
@@ -31,10 +31,17 @@ configuration:
 
 func TestDefinitionParsesYaml(t *testing.T) {
 	def, err := ParseDefinition([]byte(testPluginDef))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	assert.NoError(t, err)
-	assert.Equal(t, def.Name, `test-plugin`)
-	assert.Equal(t, def.Requirements, []string{`docker`, `docker-compose`})
+	if def.Name != `test-plugin` {
+		t.Fatal("bad plugin def name", def.Name)
+	}
+
+	if !reflect.DeepEqual(def.Requirements, []string{`docker`, `docker-compose`}) {
+		t.Fatal("bad plugin def requirements", def.Requirements)
+	}
 }
 
 func TestDefinitionValidationFailsIfDependenciesNotMet(t *testing.T) {
@@ -50,10 +57,15 @@ func TestDefinitionValidationFailsIfDependenciesNotMet(t *testing.T) {
 
 	res := validator.Validate(def, nil)
 
-	assert.False(t, res.Valid())
-	assert.Equal(t, res.Errors, []string{
+	if res.Valid() {
+		t.Fatal("validator should have failed")
+	}
+
+	if reflect.DeepEqual(res.Errors, []string{
 		`Required command "llamas" isn't in PATH`,
-	})
+	}) {
+		t.Fatal("missing error from validator", res.Errors)
+	}
 }
 
 func TestDefinitionValidatesConfiguration(t *testing.T) {
@@ -82,8 +94,13 @@ func TestDefinitionValidatesConfiguration(t *testing.T) {
 		"llamas": "always",
 	})
 
-	assert.False(t, res.Valid())
-	assert.Equal(t, res.Errors, []string{
+	if res.Valid() {
+		t.Fatal("validator should have failed")
+	}
+
+	if reflect.DeepEqual(res.Errors, []string{
 		`/: {"llamas":"always"} "alpacas" value is required`,
-	})
+	}) {
+		t.Fatal("missing error from validator", res.Errors)
+	}
 }

@@ -3,8 +3,6 @@ package env
 import (
 	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestFromExportHandlesNewlines(t *testing.T) {
@@ -153,8 +151,8 @@ func TestFromExportFromWindows(t *testing.T) {
 
 	env := FromExport(strings.Join(lines, "\r\n"))
 
-	if !assert.Equal(t, env.Length(), 6) {
-		t.FailNow()
+	if l := env.Length(); l != 6 {
+		t.Fatal("bad environment length", l)
 	}
 
 	assertEqualEnv(t, `SESSIONNAME`, "Console", env)
@@ -183,8 +181,8 @@ func TestFromExportFromWindowsWithLeadingAndTrailingSpaces(t *testing.T) {
 
 	env := FromExport(strings.Join(lines, "\r\n"))
 
-	if !assert.Equal(t, env.Length(), 6) {
-		t.FailNow()
+	if env.Length() != 6 {
+		t.Fatalf("Expected length of 6, got %d", env.Length())
 	}
 
 	assertEqualEnv(t, `SESSIONNAME`, "Console", env)
@@ -198,7 +196,8 @@ func TestFromExportFromWindowsWithLeadingAndTrailingSpaces(t *testing.T) {
 func assertEqualEnv(t *testing.T, key string, expected string, env *Environment) {
 	t.Helper()
 	v, _ := env.Get(key)
-	if !assert.Equal(t, expected, v) {
-		t.FailNow()
+
+	if expected != v {
+		t.Fatalf("Expected %s, got %s", expected, v)
 	}
 }

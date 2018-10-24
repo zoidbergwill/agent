@@ -3,55 +3,77 @@ package plugin
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"testing"
 
-	"github.com/buildkite/agent/env"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateFromJSON(t *testing.T) {
 	t.Parallel()
 
-	var plugins []*Plugin
-	var err error
+	assertEqual := func(expected, actual interface{}) {
+		if !reflect.DeepEqual(expected, actual) {
+			t.Fatalf("expected %v, got %v", expected, actual)
+		}
+	}
 
-	plugins, err = CreateFromJSON(`[{"http://github.com/buildkite/plugins/docker-compose#a34fa34":{"container":"app"}}, "github.com/buildkite/plugins/ping#master"]`)
-	assert.Equal(t, len(plugins), 2)
-	assert.Nil(t, err)
+	plugins, err := CreateFromJSON(`[{"http://github.com/buildkite/plugins/docker-compose#a34fa34":{"container":"app"}}, "github.com/buildkite/plugins/ping#master"]`)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	assert.Equal(t, plugins[0].Location, "github.com/buildkite/plugins/docker-compose")
-	assert.Equal(t, plugins[0].Version, "a34fa34")
-	assert.Equal(t, plugins[0].Scheme, "http")
-	assert.Equal(t, plugins[0].Configuration, map[string]interface{}{"container": "app"})
+	if l := len(plugins); l != 2 {
+		t.Fatal("bad plugins length", l)
+	}
 
-	assert.Equal(t, plugins[1].Location, "github.com/buildkite/plugins/ping")
-	assert.Equal(t, plugins[1].Version, "master")
-	assert.Equal(t, plugins[1].Scheme, "")
-	assert.Equal(t, plugins[1].Configuration, map[string]interface{}{})
+	assertEqual(plugins[0].Location, "github.com/buildkite/plugins/docker-compose")
+	assertEqual(plugins[0].Version, "a34fa34")
+	assertEqual(plugins[0].Scheme, "http")
+	assertEqual(plugins[0].Configuration, map[string]interface{}{"container": "app"})
+
+	assertEqual(plugins[1].Location, "github.com/buildkite/plugins/ping")
+	assertEqual(plugins[1].Version, "master")
+	assertEqual(plugins[1].Scheme, "")
+	assertEqual(plugins[1].Configuration, map[string]interface{}{})
 
 	plugins, err = CreateFromJSON(`["ssh://git:foo@github.com/buildkite/plugins/docker-compose#a34fa34"]`)
-	assert.Equal(t, len(plugins), 1)
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	assert.Equal(t, plugins[0].Location, "github.com/buildkite/plugins/docker-compose")
-	assert.Equal(t, plugins[0].Version, "a34fa34")
-	assert.Equal(t, plugins[0].Scheme, "ssh")
-	assert.Equal(t, plugins[0].Authentication, "git:foo")
+	if l := len(plugins); l != 2 {
+		t.Fatal("bad plugins length", l)
+	}
 
-	plugins, err = CreateFromJSON(`blah`)
-	assert.Equal(t, len(plugins), 0)
-	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), "invalid character 'b' looking for beginning of value")
+	assertEqual(plugins[0].Location, "github.com/buildkite/plugins/docker-compose")
+	assertEqual(plugins[0].Version, "a34fa34")
+	assertEqual(plugins[0].Scheme, "ssh")
+	assertEqual(plugins[0].Authentication, "git:foo")
+}
 
-	plugins, err = CreateFromJSON(`{"foo": "bar"}`)
-	assert.Equal(t, len(plugins), 0)
-	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), "JSON structure was not an array")
+func TestCreateFromJSONWithErrors(t *testing.T) {
+	for _, tc := range []struct {
+		location      string
+		expectedError string
+	}{
+		{`blah`, "invalid character 'b' looking for beginning of value"},
+		{`{"foo": "bar"}`, "JSON structure was not an array"},
+		{`["github.com/buildkite/plugins/ping#master#lololo"]`, "Too many #'s in \"github.com/buildkite/plugins/ping#master#lololo\""},
+	} {
+		tc := tc
+		t.Run(tc.location, func(tt *testing.T) {
+			tt.Parallel()
+			plugins, err := CreateFromJSON(tc.location)
+			if err == nil || err.Error() != tc.expectedError {
+				t.Fatal("expected error", err)
+			}
 
-	plugins, err = CreateFromJSON(`["github.com/buildkite/plugins/ping#master#lololo"]`)
-	assert.Equal(t, len(plugins), 0)
-	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), "Too many #'s in \"github.com/buildkite/plugins/ping#master#lololo\"")
+			if l := len(plugins); l != 0 {
+				t.Fatal("expected no plugins", l)
+			}
+		})
+	}
 }
 
 func TestPluginNameParsedFromLocation(t *testing.T) {
@@ -79,202 +101,209 @@ func TestPluginNameParsedFromLocation(t *testing.T) {
 	}
 }
 
-func TestIdentifier(t *testing.T) {
+func TestPluginIdentifierParsedFromLocation(t *testing.T) {
 	t.Parallel()
 
-	var plugin *Plugin
-	var id string
-	var err error
+	for _, tc := range []struct {
+		location           string
+		expectedIdentifier string
+	}{
+		{"github.com/buildkite/plugins/docker-compose/beta#master", "github-com-buildkite-plugins-docker-compose-beta-master"},
+		{"github.com/buildkite/plugins/docker-compose/beta", "github-com-buildkite-plugins-docker-compose-beta"},
+		{"192.168.0.1/foo.git#12341234", "192-168-0-1-foo-git-12341234"},
+		{"/foo/bar/", "foo-bar"},
+	} {
+		tc := tc
+		t.Run(tc.location, func(tt *testing.T) {
+			tt.Parallel()
 
-	plugin = &Plugin{Location: "github.com/buildkite/plugins/docker-compose/beta#master"}
-	id, err = plugin.Identifier()
-	assert.Equal(t, id, "github-com-buildkite-plugins-docker-compose-beta-master")
-	assert.Nil(t, err)
-
-	plugin = &Plugin{Location: "github.com/buildkite/plugins/docker-compose/beta"}
-	id, err = plugin.Identifier()
-	assert.Equal(t, id, "github-com-buildkite-plugins-docker-compose-beta")
-	assert.Nil(t, err)
-
-	plugin = &Plugin{Location: "192.168.0.1/foo.git#12341234"}
-	id, err = plugin.Identifier()
-	assert.Equal(t, id, "192-168-0-1-foo-git-12341234")
-	assert.Nil(t, err)
-
-	plugin = &Plugin{Location: "/foo/bar/"}
-	id, err = plugin.Identifier()
-	assert.Equal(t, id, "foo-bar")
-	assert.Nil(t, err)
+			p := &Plugin{Location: tc.location}
+			id, err := p.Identifier()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if id != tc.expectedIdentifier {
+				t.Error("bad plugin identifier", id)
+			}
+		})
+	}
 }
 
-func TestRepositoryAndSubdirectory(t *testing.T) {
+func TestPluginRepositoryAndSubdirectoryParsedFromLocation(t *testing.T) {
 	t.Parallel()
 
-	var plugin *Plugin
-	var repo string
-	var sub string
-	var err error
+	for _, tc := range []struct {
+		location             string
+		expectedRepository   string
+		expectedSubdirectory string
+	}{
+		{"github.com/buildkite/plugins/docker-compose/beta", "https://github.com/buildkite/plugins", "docker-compose/beta"},
+		{"github.com/buildkite/test-plugin", "https://github.com/buildkite/test-plugin", ""},
+		{"bitbucket.org/user/project/sub/directory", "https://bitbucket.org/user/project", "sub/directory"},
+		{"114.135.234.212/foo.git", "https://114.135.234.212/foo.git", ""},
+		{"github.com/buildkite/plugins/docker-compose/beta", "https://github.com/buildkite/plugins", "docker-compose/beta"},
+		{"/Users/keithpitt/Development/plugins.git/test-plugin", "/Users/keithpitt/Development/plugins.git", "test-plugin"},
+	} {
+		tc := tc
+		t.Run(tc.location, func(tt *testing.T) {
+			tt.Parallel()
 
-	plugin = &Plugin{Location: "github.com/buildkite/plugins/docker-compose/beta"}
-	repo, err = plugin.Repository()
-	assert.Equal(t, repo, "https://github.com/buildkite/plugins")
-	assert.Nil(t, err)
-	sub, err = plugin.RepositorySubdirectory()
-	assert.Equal(t, sub, "docker-compose/beta")
-	assert.Nil(t, err)
+			p := &Plugin{Location: tc.location}
+			repo, err := p.Repository()
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	plugin = &Plugin{Location: "github.com/buildkite/test-plugin"}
-	repo, err = plugin.Repository()
-	assert.Equal(t, repo, "https://github.com/buildkite/test-plugin")
-	assert.Nil(t, err)
-	sub, err = plugin.RepositorySubdirectory()
-	assert.Equal(t, sub, "")
-	assert.Nil(t, err)
+			if repo != tc.expectedRepository {
+				t.Error("bad repository", repo)
+			}
 
-	plugin = &Plugin{Location: "github.com/buildkite"}
-	repo, err = plugin.Repository()
-	assert.Equal(t, repo, "")
-	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), `Incomplete github.com path "github.com/buildkite"`)
-	sub, err = plugin.RepositorySubdirectory()
-	assert.Equal(t, sub, "")
-	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), `Incomplete github.com path "github.com/buildkite"`)
+			sub, err := p.RepositorySubdirectory()
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	plugin = &Plugin{Location: "bitbucket.org/buildkite"}
-	repo, err = plugin.Repository()
-	assert.Equal(t, repo, "")
-	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), `Incomplete bitbucket.org path "bitbucket.org/buildkite"`)
-	sub, err = plugin.RepositorySubdirectory()
-	assert.Equal(t, sub, "")
-	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), `Incomplete bitbucket.org path "bitbucket.org/buildkite"`)
+			if sub != tc.expectedSubdirectory {
+				t.Error("bad subdirectory", sub)
+			}
+		})
+	}
 
-	plugin = &Plugin{Location: "bitbucket.org/user/project/sub/directory"}
-	repo, err = plugin.Repository()
-	assert.Equal(t, repo, "https://bitbucket.org/user/project")
-	assert.Nil(t, err)
-	sub, err = plugin.RepositorySubdirectory()
-	assert.Equal(t, sub, "sub/directory")
-	assert.Nil(t, err)
+	for _, tc := range []struct {
+		location      string
+		expectedError string
+	}{
+		{"github.com/buildkite", `Incomplete github.com path "github.com/buildkite"`},
+		{"bitbucket.org/buildkite", `Incomplete bitbucket.org path "bitbucket.org/buildkite"`},
+		{"", "Missing plugin location"},
+	} {
+		tc := tc
+		t.Run(tc.location, func(tt *testing.T) {
+			plugin := &Plugin{Location: tc.location}
+			_, err := plugin.Repository()
+			if err == nil || err.Error() != tc.expectedError {
+				t.Fatal("expected error from Repository", err)
+			}
 
-	plugin = &Plugin{Location: "bitbucket.org/user/project/sub/directory", Scheme: "http", Authentication: "foo:bar"}
-	repo, err = plugin.Repository()
-	assert.Equal(t, repo, "http://foo:bar@bitbucket.org/user/project")
-	assert.Nil(t, err)
-	sub, err = plugin.RepositorySubdirectory()
-	assert.Equal(t, sub, "sub/directory")
-	assert.Nil(t, err)
+			_, err = plugin.RepositorySubdirectory()
+			if err == nil || err.Error() != tc.expectedError {
+				t.Fatal("expected error from RepositorySubdirectory", err)
+			}
+		})
+	}
+}
 
-	plugin = &Plugin{Location: "114.135.234.212/foo.git"}
-	repo, err = plugin.Repository()
-	assert.Equal(t, repo, "https://114.135.234.212/foo.git")
-	assert.Nil(t, err)
-	sub, err = plugin.RepositorySubdirectory()
-	assert.Equal(t, sub, "")
-	assert.Nil(t, err)
+func TestPluginRepositoryAndSubdirectoryParsedFromLocationWithAuthentication(t *testing.T) {
+	t.Parallel()
 
-	plugin = &Plugin{Location: "github.com/buildkite/plugins/docker-compose/beta"}
-	repo, err = plugin.Repository()
-	assert.Equal(t, repo, "https://github.com/buildkite/plugins")
-	assert.Nil(t, err)
-	sub, err = plugin.RepositorySubdirectory()
-	assert.Equal(t, sub, "docker-compose/beta")
-	assert.Nil(t, err)
+	plugin := &Plugin{
+		Location:       "bitbucket.org/user/project/sub/directory",
+		Scheme:         "http",
+		Authentication: "foo:bar",
+	}
+	repo, err := plugin.Repository()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	plugin = &Plugin{Location: "/Users/keithpitt/Development/plugins.git/test-plugin"}
-	repo, err = plugin.Repository()
-	assert.Equal(t, repo, "/Users/keithpitt/Development/plugins.git")
-	assert.Nil(t, err)
-	sub, err = plugin.RepositorySubdirectory()
-	assert.Equal(t, sub, "test-plugin")
-	assert.Nil(t, err)
+	if repo != "http://foo:bar@bitbucket.org/user/project" {
+		t.Fatal("bad repo", repo)
+	}
 
-	plugin = &Plugin{Location: ""}
-	repo, err = plugin.Repository()
-	assert.Equal(t, repo, "")
-	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), "Missing plugin location")
+	sub, err := plugin.RepositorySubdirectory()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if sub != "sub/directory" {
+		t.Fatal("bad sub", repo)
+	}
 }
 
 func TestConfigurationToEnvironment(t *testing.T) {
 	t.Parallel()
 
-	var envMap *env.Environment
-	var err error
+	assertPluginConfigEqualsEnv := func(configJson string, expected []string) {
+		var config map[string]interface{}
 
-	envMap, err = pluginEnvFromConfig(t, `{ "config-key": 42 }`)
-	assert.NoError(t, err)
-	assert.Equal(t, []string{"BUILDKITE_PLUGIN_DOCKER_COMPOSE_CONFIG_KEY=42"}, envMap.ToSlice())
+		if err := json.Unmarshal([]byte(configJson), &config); err != nil {
+			t.Fatal(err)
+		}
 
-	envMap, err = pluginEnvFromConfig(t, `{ "container": "app", "some-other-setting": "else right here" }`)
-	assert.NoError(t, err)
-	assert.Equal(t, []string{
-		"BUILDKITE_PLUGIN_DOCKER_COMPOSE_CONTAINER=app",
-		"BUILDKITE_PLUGIN_DOCKER_COMPOSE_SOME_OTHER_SETTING=else right here"},
-		envMap.ToSlice())
+		plugins, err := CreateFromJSON(fmt.Sprintf(
+			`[ { "%s": %s } ]`,
+			"github.com/buildkite-plugins/docker-compose-buildkite-plugin",
+			configJson,
+		))
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	envMap, err = pluginEnvFromConfig(t, `{ "and _ with a    - number": 12 }`)
-	assert.NoError(t, err)
-	assert.Equal(t, []string{"BUILDKITE_PLUGIN_DOCKER_COMPOSE_AND_WITH_A_NUMBER=12"}, envMap.ToSlice())
+		if l := len(plugins); l != 1 {
+			t.Fatal("expected 1 plugin", err)
+		}
 
-	envMap, err = pluginEnvFromConfig(t, `{ "bool-true-key": true, "bool-false-key": false }`)
-	assert.NoError(t, err)
-	assert.Equal(t, []string{
-		"BUILDKITE_PLUGIN_DOCKER_COMPOSE_BOOL_FALSE_KEY=false",
-		"BUILDKITE_PLUGIN_DOCKER_COMPOSE_BOOL_TRUE_KEY=true"},
-		envMap.ToSlice())
+		actual, err := plugins[0].ConfigurationToEnvironment()
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	envMap, err = pluginEnvFromConfig(t, `{ "array-key": [ "array-val-1", "array-val-2" ] }`)
-	assert.NoError(t, err)
-	assert.Equal(t, []string{
-		"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_0=array-val-1",
-		"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_1=array-val-2"},
-		envMap.ToSlice())
+		if !reflect.DeepEqual(expected, actual.ToSlice()) {
+			t.Fatalf("expected %v, got %v", expected, actual)
+		}
+	}
 
-	envMap, err = pluginEnvFromConfig(t, `{ "array-key": [ 42, 43, 44 ] }`)
-	assert.NoError(t, err)
-	assert.Equal(t, []string{
-		"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_0=42",
-		"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_1=43",
-		"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_2=44"},
-		envMap.ToSlice())
+	assertPluginConfigEqualsEnv(
+		`{ "config-key": 42 }`,
+		[]string{"BUILDKITE_PLUGIN_DOCKER_COMPOSE_CONFIG_KEY=42"},
+	)
 
-	envMap, err = pluginEnvFromConfig(t, `{ "array-key": [ 42, 43, "foo" ] }`)
-	assert.NoError(t, err)
-	assert.Equal(t, []string{
-		"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_0=42",
-		"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_1=43",
-		"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_2=foo"},
-		envMap.ToSlice())
+	assertPluginConfigEqualsEnv(
+		`{ "container": "app", "some-other-setting": "else right here" }`,
+		[]string{
+			"BUILDKITE_PLUGIN_DOCKER_COMPOSE_CONTAINER=app",
+			"BUILDKITE_PLUGIN_DOCKER_COMPOSE_SOME_OTHER_SETTING=else right here"})
 
-	envMap, err = pluginEnvFromConfig(t, `{ "array-key": [ { "subkey": "subval" } ] }`)
-	assert.NoError(t, err)
-	assert.Equal(t, []string{
-		"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_0_SUBKEY=subval"},
-		envMap.ToSlice())
+	assertPluginConfigEqualsEnv(
+		`{ "and _ with a    - number": 12 }`,
+		[]string{"BUILDKITE_PLUGIN_DOCKER_COMPOSE_AND_WITH_A_NUMBER=12"})
 
-	envMap, err = pluginEnvFromConfig(t, `{ "array-key": [ { "subkey": [1, 2, "llamas"] } ] }`)
-	assert.NoError(t, err)
-	assert.Equal(t, []string{
-		"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_0_SUBKEY_0=1",
-		"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_0_SUBKEY_1=2",
-		"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_0_SUBKEY_2=llamas",
-	}, envMap.ToSlice())
-}
+	assertPluginConfigEqualsEnv(
+		`{ "bool-true-key": true, "bool-false-key": false }`,
+		[]string{
+			"BUILDKITE_PLUGIN_DOCKER_COMPOSE_BOOL_FALSE_KEY=false",
+			"BUILDKITE_PLUGIN_DOCKER_COMPOSE_BOOL_TRUE_KEY=true"})
 
-func pluginEnvFromConfig(t *testing.T, configJson string) (*env.Environment, error) {
-	var config map[string]interface{}
+	assertPluginConfigEqualsEnv(
+		`{ "array-key": [ "array-val-1", "array-val-2" ] }`,
+		[]string{
+			"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_0=array-val-1",
+			"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_1=array-val-2"})
 
-	json.Unmarshal([]byte(configJson), &config)
+	assertPluginConfigEqualsEnv(
+		`{ "array-key": [ 42, 43, 44 ] }`,
+		[]string{
+			"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_0=42",
+			"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_1=43",
+			"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_2=44"})
 
-	jsonString := fmt.Sprintf(`[ { "%s": %s } ]`, "github.com/buildkite-plugins/docker-compose-buildkite-plugin", configJson)
+	assertPluginConfigEqualsEnv(
+		`{ "array-key": [ 42, 43, "foo" ] }`,
+		[]string{
+			"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_0=42",
+			"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_1=43",
+			"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_2=foo"})
 
-	plugins, err := CreateFromJSON(jsonString)
+	assertPluginConfigEqualsEnv(
+		`{ "array-key": [ { "subkey": "subval" } ] }`,
+		[]string{
+			"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_0_SUBKEY=subval"})
 
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(plugins))
-
-	return plugins[0].ConfigurationToEnvironment()
+	assertPluginConfigEqualsEnv(
+		`{ "array-key": [ { "subkey": [1, 2, "llamas"] } ] }`,
+		[]string{
+			"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_0_SUBKEY_0=1",
+			"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_0_SUBKEY_1=2",
+			"BUILDKITE_PLUGIN_DOCKER_COMPOSE_ARRAY_KEY_0_SUBKEY_2=llamas",
+		})
 }
