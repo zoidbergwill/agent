@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -111,14 +112,16 @@ func (r JobRunner) Create() (runner *JobRunner, err error) {
 
 	// The process that will run the bootstrap script
 	runner.process = &process.Process{
-		Script:             cmd,
-		Env:                env,
-		PTY:                r.AgentConfiguration.RunInPty,
-		Timestamp:          r.AgentConfiguration.TimestampLines,
-		StartCallback:      r.onProcessStartCallback,
-		LineCallback:       runner.headerTimesStreamer.Scan,
-		LinePreProcessor:   runner.headerTimesStreamer.LinePreProcessor,
-		LineCallbackFilter: runner.headerTimesStreamer.LineIsHeader,
+		Script:        cmd,
+		Env:           env,
+		PTY:           r.AgentConfiguration.RunInPty,
+		StartCallback: r.onProcessStartCallback,
+		LineScanner: &process.LineScanner{
+			LineCallback:       runner.headerTimesStreamer.Scan,
+			LinePreProcessor:   runner.headerTimesStreamer.LinePreProcessor,
+			LineCallbackFilter: runner.headerTimesStreamer.LineIsHeader,
+			LinePostProcessor:  newProcessOutputFilter(r.AgentConfiguration),
+		},
 	}
 
 	return
@@ -474,4 +477,24 @@ func (r *JobRunner) onUploadChunk(chunk *LogStreamerChunk) error {
 
 		return err
 	}, &retry.Config{Maximum: 10, Interval: 5 * time.Second})
+}
+
+// If you change header parsing here make sure to change it in the
+// buildkite.com frontend logic, too
+
+var headerExpansionRegex = regexp.MustCompile("^(?:\\^\\^\\^\\s+\\+\\+\\+)\\s*$")
+
+// creates a process output filter for adding timestamp prefixes
+func newProcessOutputFilter(cfg *AgentConfiguration) func(string) string {
+	if !cfg.TimestampLines {
+		return nil
+	}
+
+	return func(lineString string) string {
+		if headerExpansionRegex.MatchString(lineString) {
+			// Don't timestamp special lines (e.g. header)
+			return lineString
+		}
+		return fmt.Sprintf("[%s] %s", time.Now().UTC().Format(time.RFC3339), lineString)
+	}
 }

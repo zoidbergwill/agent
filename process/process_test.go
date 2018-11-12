@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"reflect"
-	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -17,13 +15,6 @@ import (
 	"github.com/buildkite/agent/process"
 )
 
-const longTestOutput = `+++ My header
-llamas
-and more llamas
-a very long line a very long line a very long line a very long line a very long line a very long line a very long line a very long line a very long line a very long line a very long line a very long line a very long line a very long line
-and some alpacas
-`
-
 func TestProcessRunsAndCallsStartCallback(t *testing.T) {
 	var started int32
 
@@ -33,9 +24,6 @@ func TestProcessRunsAndCallsStartCallback(t *testing.T) {
 		StartCallback: func() {
 			atomic.AddInt32(&started, 1)
 		},
-		LineCallback:       func(s string) {},
-		LinePreProcessor:   func(s string) string { return s },
-		LineCallbackFilter: func(s string) bool { return false },
 	}
 
 	if err := p.Start(); err != nil {
@@ -56,87 +44,12 @@ func TestProcessRunsAndCallsStartCallback(t *testing.T) {
 	}
 }
 
-func TestProcessCallsLineCallbacksForEachOutputLine(t *testing.T) {
-	var lineCounter int32
-	var lines []string
-	var linesLock sync.Mutex
-
-	p := process.Process{
-		Script:        []string{os.Args[0]},
-		Env:           []string{"TEST_MAIN=tester"},
-		StartCallback: func() {},
-		LineCallback: func(s string) {
-			linesLock.Lock()
-			defer linesLock.Unlock()
-			lines = append(lines, s)
-		},
-		LinePreProcessor: func(s string) string {
-			lineNumber := atomic.AddInt32(&lineCounter, 1)
-			return fmt.Sprintf("#%d: chars %d", lineNumber, len(s))
-		},
-		LineCallbackFilter: func(s string) bool {
-			return true
-		},
-	}
-
-	if err := p.Start(); err != nil {
-		t.Fatal(err)
-	}
-
-	linesLock.Lock()
-
-	var expected = []string{
-		`#1: chars 13`,
-		`#2: chars 6`,
-		`#3: chars 15`,
-		`#4: chars 237`,
-		`#5: chars 16`,
-	}
-
-	if !reflect.DeepEqual(expected, lines) {
-		t.Fatalf("Lines was unexpected:\nWanted: %v\nGot:    %v\n", expected, lines)
-	}
-}
-
-func TestProcessPrependsLinesWithTimestamps(t *testing.T) {
-	p := process.Process{
-		Script:             []string{os.Args[0]},
-		Env:                []string{"TEST_MAIN=tester"},
-		StartCallback:      func() {},
-		LineCallback:       func(s string) {},
-		LinePreProcessor:   func(s string) string { return s },
-		LineCallbackFilter: func(s string) bool { return strings.HasPrefix(s, "+++") },
-		Timestamp:          true,
-	}
-
-	if err := p.Start(); err != nil {
-		t.Fatal(err)
-	}
-
-	lines := strings.Split(strings.TrimSpace(p.Output()), "\n")
-
-	if lines[0] != `+++ My header` {
-		t.Fatalf("Expected first line to be %q, got %q", `+++ My header`, lines[0])
-	}
-
-	tsRegex := regexp.MustCompile(`^\[.+?\]`)
-
-	for _, line := range lines[1:] {
-		if !tsRegex.MatchString(line) {
-			t.Fatalf("Line doesn't start with a timestamp: %s", line)
-		}
-	}
-}
-
 func TestProcessOutputIsSafeFromRaces(t *testing.T) {
 	var counter int32
 
 	p := process.Process{
-		Script:             []string{os.Args[0]},
-		Env:                []string{"TEST_MAIN=tester"},
-		LineCallback:       func(s string) {},
-		LinePreProcessor:   func(s string) string { return s },
-		LineCallbackFilter: func(s string) bool { return false },
+		Script: []string{os.Args[0]},
+		Env:    []string{"TEST_MAIN=tester"},
 	}
 
 	// the job_runner has a for loop that calls IsRunning and Output, so this checks those are safe from races
@@ -168,11 +81,6 @@ func TestKillingProcess(t *testing.T) {
 	p := process.Process{
 		Script: []string{os.Args[0]},
 		Env:    []string{"TEST_MAIN=tester-signal"},
-		LineCallback: func(s string) {
-			t.Logf("Line: %s", s)
-		},
-		LinePreProcessor:   func(s string) string { return s },
-		LineCallbackFilter: func(s string) bool { return false },
 	}
 
 	var wg sync.WaitGroup
