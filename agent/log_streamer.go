@@ -45,12 +45,12 @@ type LogStreamer struct {
 	chunkWaitGroup sync.WaitGroup
 
 	// Only allow processing one at a time
-	processMutex sync.Mutex
+	mu sync.Mutex
 }
 
 type LogStreamerChunk struct {
 	// The contents of the chunk
-	Data string
+	Data []byte
 
 	// The sequence number of this chunk
 	Order int
@@ -79,7 +79,7 @@ func (ls *LogStreamer) Start() error {
 	}
 
 	for i := 0; i < ls.conf.Concurrency; i++ {
-		go Worker(i, ls)
+		go logStreamerWorker(i, ls)
 	}
 
 	return nil
@@ -89,56 +89,47 @@ func (ls *LogStreamer) FailedChunks() int {
 	return int(atomic.LoadInt32(&ls.chunksFailedCount))
 }
 
-// Takes the full process output, grabs the portion we don't have, and adds it
-// to the stream queue
-func (ls *LogStreamer) Process(output string) error {
-	bytes := len(output)
+// Write a chunk of data to the log streamer
+func (ls *LogStreamer) Write(blob []byte) (n int, err error) {
+	// Serialize parallel writes
+	ls.mu.Lock()
+	defer ls.mu.Unlock()
 
-	// Only allow one streamer process at a time
-	ls.processMutex.Lock()
+	// How many chunks do we have that fit within the MaxChunkSizeBytes?
+	numberOfChunks := int(math.Ceil(float64(len(blob)) / float64(ls.conf.MaxChunkSizeBytes)))
 
-	if ls.bytes != bytes {
-		// Grab the part of the log that we haven't seen yet
-		blob := output[ls.bytes:bytes]
+	// Increase the wait group by the amount of chunks we're going to add
+	ls.chunkWaitGroup.Add(numberOfChunks)
 
-		// How many chunks do we have that fit within the MaxChunkSizeBytes?
-		numberOfChunks := int(math.Ceil(float64(len(blob)) / float64(ls.conf.MaxChunkSizeBytes)))
-
-		// Increase the wait group by the amount of chunks we're going
-		// to add
-		ls.chunkWaitGroup.Add(numberOfChunks)
-
-		for i := 0; i < numberOfChunks; i++ {
-			// Find the upper limit of the blob
-			upperLimit := (i + 1) * ls.conf.MaxChunkSizeBytes
-			if upperLimit > len(blob) {
-				upperLimit = len(blob)
-			}
-
-			// Grab the 100kb section of the blob
-			partialChunk := blob[i*ls.conf.MaxChunkSizeBytes : upperLimit]
-
-			// Increment the order
-			ls.order += 1
-
-			// Create the chunk and append it to our list
-			chunk := LogStreamerChunk{
-				Data:   partialChunk,
-				Order:  ls.order,
-				Offset: ls.bytes,
-				Size:   len(partialChunk),
-			}
-
-			ls.queue <- &chunk
-
-			// Save the new amount of bytes
-			ls.bytes += len(partialChunk)
+	for i := 0; i < numberOfChunks; i++ {
+		// Find the upper limit of the blob
+		upperLimit := (i + 1) * ls.conf.MaxChunkSizeBytes
+		if upperLimit > len(blob) {
+			upperLimit = len(blob)
 		}
+
+		// Grab the section of the blob
+		partialChunk := blob[i*ls.conf.MaxChunkSizeBytes : upperLimit]
+
+		// Increment the order
+		ls.order += 1
+
+		// Create the chunk and append it to our list
+		chunk := LogStreamerChunk{
+			Data:   partialChunk,
+			Order:  ls.order,
+			Offset: ls.bytes,
+			Size:   len(partialChunk),
+		}
+
+		ls.queue <- &chunk
+
+		// Save the new amount of bytes
+		ls.bytes += len(partialChunk)
+		n += len(partialChunk)
 	}
 
-	ls.processMutex.Unlock()
-
-	return nil
+	return n, err
 }
 
 // Waits for all the chunks to be uploaded, then shuts down all the workers
@@ -157,7 +148,7 @@ func (ls *LogStreamer) Stop() error {
 }
 
 // The actual log streamer worker
-func Worker(id int, ls *LogStreamer) {
+func logStreamerWorker(id int, ls *LogStreamer) {
 	ls.logger.Debug("[LogStreamer/Worker#%d] Worker is starting...", id)
 
 	var chunk *LogStreamerChunk

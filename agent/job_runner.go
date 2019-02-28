@@ -60,9 +60,6 @@ type JobRunner struct {
 	// The internal process of the job
 	process *process.Process
 
-	// The internal line buffer of the process output
-	lineBuffer *process.LineBuffer
-
 	// The internal header time streamer
 	headerTimesStreamer *headerTimesStreamer
 
@@ -148,31 +145,36 @@ func NewJobRunner(l *logger.Logger, scope *metrics.Scope, ag *api.Agent, j *api.
 			conf.AgentConfiguration.BootstrapScript, err)
 	}
 
-	// Our log scanner currently needs a full buffer of the log output
-	runner.lineBuffer = &process.LineBuffer{}
+	var processWriter io.Writer
 
-	pr, pw := io.Pipe()
+	if conf.AgentConfiguration.TimestampLines {
+		panic("Nope")
 
-	// Use a scanner to process output line by line
-	go func() {
-		scanner := process.NewScanner(l)
+		// pr, pw := io.Pipe()
 
-		err := scanner.ScanLines(pr, func(line string) {
-			// Send to our header streamer and determine if it's a header
-			isHeader := runner.headerTimesStreamer.Scan(line)
+		// go func() {
+		// 	scanner := process.NewScanner(l)
 
-			// Optionally prefix log lines with timestamps
-			if conf.AgentConfiguration.TimestampLines && !(isHeaderExpansion(line) || isHeader) {
-				line = fmt.Sprintf("[%s] %s", time.Now().UTC().Format(time.RFC3339), line)
-			}
+		// 	// Use a scanner to process output line by line
+		// 	err := scanner.ScanLines(pr, func(line string) {
+		// 		// Send to our header streamer and determine if it's a header
+		// 		isHeader := runner.headerTimesStreamer.Scan(line)
 
-			// Write the log line to the buffer
-			runner.lineBuffer.WriteLine(line)
-		})
-		if err != nil {
-			l.Error("[LineScanner] Encountered error %v", err)
-		}
-	}()
+		// 		// Optionally prefix log lines with timestamps
+		// 		if !(isHeaderExpansion(line) || isHeader) {
+		// 			line = fmt.Sprintf("[%s] %s", time.Now().UTC().Format(time.RFC3339), line)
+		// 		}
+
+		// 		// Write the log line to the buffer
+		// 		runner.lineBuffer.WriteLine(line)
+		// 	})
+		// 	if err != nil {
+		// 		l.Error("[LineScanner] Encountered error %v", err)
+		// 	}
+		// }()
+	} else {
+		processWriter = runner.logStreamer
+	}
 
 	// Copy the current processes ENV and merge in the new ones. We do this
 	// so the sub process gets PATH and stuff. We merge our path in over
@@ -186,8 +188,8 @@ func NewJobRunner(l *logger.Logger, scope *metrics.Scope, ag *api.Agent, j *api.
 		Args:   cmd[1:],
 		Env:    processEnv,
 		PTY:    conf.AgentConfiguration.RunInPty,
-		Stdout: pw,
-		Stderr: pw,
+		Stdout: processWriter,
+		Stderr: processWriter,
 	})
 
 	// Kick off our callback when the process starts
@@ -225,10 +227,7 @@ func (r *JobRunner) Run() error {
 	// Run the process. This will block until it finishes.
 	if err := r.process.Run(); err != nil {
 		// Send the error as output
-		r.logStreamer.Process(fmt.Sprintf("%s", err))
-	} else {
-		// Add the final output to the streamer
-		r.logStreamer.Process(r.lineBuffer.Output())
+		fmt.Fprintf(r.logStreamer, "Error running process: %v", err)
 	}
 
 	// Store the finished at time
@@ -240,7 +239,9 @@ func (r *JobRunner) Run() error {
 
 	// Stop the log streamer. This will block until all the chunks have
 	// been uploaded
-	r.logStreamer.Stop()
+	if err := r.logStreamer.Stop(); err != nil {
+		r.logger.Warn("Failed to stop log streamer: %v", err)
+	}
 
 	// Warn about failed chunks
 	if count := r.logStreamer.FailedChunks(); count > 0 {
@@ -524,7 +525,7 @@ func (r *JobRunner) onProcessStartCallback() {
 		for {
 			// Send the output of the process to the log streamer
 			// for processing
-			r.logStreamer.Process(r.lineBuffer.Output())
+			//r.logStreamer.Process(r.lineBuffer.Output())
 
 			// Sleep for a bit, or until the job is finished
 			select {
@@ -595,7 +596,7 @@ func (r *JobRunner) onUploadChunk(chunk *LogStreamerChunk) error {
 	// returned if the chunk is invalid, and we shouldn't retry on that)
 	return retry.Do(func(s *retry.Stats) error {
 		response, err := r.apiClient.Chunks.Upload(r.job.ID, &api.Chunk{
-			Data:     chunk.Data,
+			Data:     string(chunk.Data),
 			Sequence: chunk.Order,
 			Offset:   chunk.Offset,
 			Size:     chunk.Size,

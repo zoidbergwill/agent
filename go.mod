@@ -9,11 +9,12 @@ require (
 	github.com/buildkite/interpolate v0.0.0-20171114090218-3a807e47135c
 	github.com/buildkite/shellwords v0.0.0-20180315084142-c3f497d1e000
 	github.com/buildkite/yaml v0.0.0-20181016232759-0caa5f0796e3
-	github.com/davecgh/go-spew v1.1.0 // indirect
+	github.com/davecgh/go-spew v1.1.0
 	github.com/denisbrodbeck/machineid v1.0.0
 	github.com/google/go-querystring v0.0.0-20170111101155-53e6ce116135
 	github.com/googleapis/gax-go v0.0.0-20161107002406-da06d194a00e // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20181004151105-1babbf986f6f // indirect
+	github.com/goware/prefixer v0.0.0-20160118172347-395022866408
 	github.com/jtolds/gls v4.2.1+incompatible // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/kr/pty v1.1.2
