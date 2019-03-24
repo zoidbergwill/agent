@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/buildkite/agent/agent"
-	"github.com/buildkite/agent/cliconfig"
 	"github.com/buildkite/agent/experiments"
 	"github.com/buildkite/agent/logger"
 	"github.com/buildkite/agent/metrics"
@@ -387,12 +386,10 @@ var AgentStartCommand = cli.Command{
 
 		// Setup the config loader. You'll see that we also path paths to
 		// potential config files. The loader will use the first one it finds.
-		loader := cliconfig.Loader{
-			CLI:                    c,
-			Config:                 &cfg,
-			DefaultConfigFilePaths: DefaultConfigFilePaths(),
-			Logger:                 l,
-		}
+		loader := config.NewLoader(l,
+			config.NewIniSource(DefaultConfigFilePaths()),
+			config.NewCliSource(c, &cfg),
+		)
 
 		// Load the configuration
 		if err := loader.Load(); err != nil {
