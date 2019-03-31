@@ -2,6 +2,17 @@ env:
   DRY_RUN: false # set to true to disable publishing releases
 
 steps:
+  - name: "📝 lint"
+    command: ".buildkite/steps/lint.sh"
+    soft_fail:
+      - exit_status: '*'
+    plugins:
+      docker-compose#v3.0.0:
+        config: .buildkite/docker-compose.yml
+        run: agent
+  
+  - wait
+
   - name: ":hammer: :linux:"
     command: ".buildkite/steps/tests.sh"
     artifact_paths: junit-*.xml
