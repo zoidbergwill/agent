@@ -224,34 +224,37 @@ func (b *Bootstrap) executeHook(name string, hookPath string, extraEnviron *env.
 	}
 
 	// Finally, apply changes to the current shell and config
-	b.applyEnvironmentChanges(changes.Env, changes.Dir)
+	b.updateEnvironmentAfterHook(changes.Env, changes.Dir)
 	return nil
 }
 
-func (b *Bootstrap) applyEnvironmentChanges(environ *env.Environment, dir string) {
+func (b *Bootstrap) updateEnvironmentAfterHook(environ *env.Environment, dir string) {
 	if dir != b.shell.Getwd() {
 		_ = b.shell.Chdir(dir)
 	}
 
 	// Do we even have any environment variables to change?
 	if environ != nil && environ.Length() > 0 {
-		// First, let see any of the environment variables are supposed
-		// to change the bootstrap configuration at run time.
-		bootstrapConfigEnvChanges := b.Config.ReadFromEnvironment(environ)
+		modifiable := env.New()
+
+		// First lets filter down the provided environment to only
+		// those that are modifiable
+		for _, m := range HookModifiableConfigVars {
+			if val, exists := environ.Get(m); exists {
+				_ = modifiable.Set(m, val)
+			}
+		}
+
+		// Then apply that to the config and get back a diff of what
+		// actually changed
+		changes := b.Config.ReadFromEnvironment(modifiable)
 
 		// Print out the env vars that changed. As we go through each
-		// one, we'll determine if it was a special "bootstrap"
-		// environment variable that has changed the bootstrap
-		// configuration at runtime.
-		//
-		// If it's "special", we'll show the value it was changed to -
-		// otherwise we'll hide it. Since we don't know if an
-		// environment variable contains sensitive information (i.e.
-		// THIRD_PARTY_API_KEY) we'll just not show any values for
-		// anything not controlled by us.
+		// one, we'll determine if it was a modifiable variable that change
+		// and print out its value, otherwise we'll just print out the key
+		// that changed as it might contain sensitive information
 		for k, v := range environ.ToMap() {
-			_, ok := bootstrapConfigEnvChanges[k]
-			if ok {
+			if _, ok := changes[k]; ok {
 				b.shell.Commentf("%s is now %q", k, v)
 			} else {
 				b.shell.Commentf("%s changed", k)

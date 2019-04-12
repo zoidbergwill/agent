@@ -1,13 +1,13 @@
 package bootstrap
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/buildkite/agent/env"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestEnvVarsAreMappedToConfig(t *testing.T) {
+func TestConfigCanBeReadFromEnvironment(t *testing.T) {
 	t.Parallel()
 
 	config := &Config{
@@ -15,7 +15,6 @@ func TestEnvVarsAreMappedToConfig(t *testing.T) {
 		AutomaticArtifactUploadPaths: "llamas/",
 		GitCloneFlags:                "--prune",
 		GitCleanFlags:                "-v",
-		AgentName:                    "myAgent",
 	}
 
 	environ := env.FromSlice([]string{
@@ -26,23 +25,17 @@ func TestEnvVarsAreMappedToConfig(t *testing.T) {
 	})
 
 	changes := config.ReadFromEnvironment(environ)
-	expected := map[string]string{
+
+	assert.Equal(t, map[string]string{
 		"BUILDKITE_ARTIFACT_PATHS":  "newpath",
 		"BUILDKITE_GIT_CLONE_FLAGS": "-f",
 		"BUILDKITE_REPO":            "https://my.mirror/repo.git",
-	}
+	}, changes)
 
-	if !reflect.DeepEqual(expected, changes) {
-		t.Fatalf("%#v wasn't equal to %#v", expected, changes)
-	}
-
-	if expected := "-v"; config.GitCleanFlags != expected {
-		t.Fatalf("Expected GitCleanFlags to be %v, got %v",
-			expected, config.GitCleanFlags)
-	}
-
-	if expected := "https://my.mirror/repo.git"; config.Repository != expected {
-		t.Fatalf("Expected Repository to be %v, got %v",
-			expected, config.Repository)
-	}
+	assert.Equal(t, *config, Config{
+		Repository:                   "https://my.mirror/repo.git",
+		AutomaticArtifactUploadPaths: "newpath",
+		GitCloneFlags:                "-f",
+		GitCleanFlags:                "-v",
+	})
 }

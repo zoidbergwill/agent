@@ -41,46 +41,6 @@ Example:
      "https://api.buildkite.com/v2/organizations/[org]/pipelines/[proj]/builds/[build]/jobs/[job]/env.txt" | sed 's/^/export /')
    $ buildkite-agent bootstrap --build-path builds`
 
-type BootstrapConfig struct {
-	Command                      string   `cli:"command"`
-	JobID                        string   `cli:"job" validate:"required"`
-	Repository                   string   `cli:"repository" validate:"required"`
-	Commit                       string   `cli:"commit" validate:"required"`
-	Branch                       string   `cli:"branch" validate:"required"`
-	Tag                          string   `cli:"tag"`
-	RefSpec                      string   `cli:"refspec"`
-	Plugins                      string   `cli:"plugins"`
-	PullRequest                  string   `cli:"pullrequest"`
-	GitSubmodules                bool     `cli:"git-submodules"`
-	SSHKeyscan                   bool     `cli:"ssh-keyscan"`
-	AgentName                    string   `cli:"agent" validate:"required"`
-	OrganizationSlug             string   `cli:"organization" validate:"required"`
-	PipelineSlug                 string   `cli:"pipeline" validate:"required"`
-	PipelineProvider             string   `cli:"pipeline-provider" validate:"required"`
-	AutomaticArtifactUploadPaths string   `cli:"artifact-upload-paths"`
-	ArtifactUploadDestination    string   `cli:"artifact-upload-destination"`
-	CleanCheckout                bool     `cli:"clean-checkout"`
-	GitCloneFlags                string   `cli:"git-clone-flags"`
-	GitFetchFlags                string   `cli:"git-fetch-flags"`
-	GitCloneMirrorFlags          string   `cli:"git-clone-mirror-flags"`
-	GitCleanFlags                string   `cli:"git-clean-flags"`
-	GitMirrorsPath               string   `cli:"git-mirrors-path" normalize:"filepath"`
-	GitMirrorsLockTimeout        int      `cli:"git-mirrors-lock-timeout"`
-	BinPath                      string   `cli:"bin-path" normalize:"filepath"`
-	BuildPath                    string   `cli:"build-path" normalize:"filepath"`
-	HooksPath                    string   `cli:"hooks-path" normalize:"filepath"`
-	PluginsPath                  string   `cli:"plugins-path" normalize:"filepath"`
-	CommandEval                  bool     `cli:"command-eval"`
-	PluginsEnabled               bool     `cli:"plugins-enabled"`
-	PluginValidation             bool     `cli:"plugin-validation"`
-	LocalHooksEnabled            bool     `cli:"local-hooks-enabled"`
-	PTY                          bool     `cli:"pty"`
-	Debug                        bool     `cli:"debug"`
-	Shell                        string   `cli:"shell"`
-	Experiments                  []string `cli:"experiment" normalize:"list"`
-	Phases                       []string `cli:"phases" normalize:"list"`
-}
-
 var BootstrapCommand = cli.Command{
 	Name:        "bootstrap",
 	Usage:       "Run a Buildkite job locally",
@@ -291,18 +251,25 @@ var BootstrapCommand = cli.Command{
 		ExperimentsFlag,
 	},
 	Action: func(c *cli.Context) {
-		// The configuration will be loaded into this struct
-		cfg := BootstrapConfig{}
+		cfg := &bootstrap.Config{}
 
-		l := CreateLogger(&cfg)
+		l := CreateLogger(cfg)
 
-		// Load the configuration
-		if err := cliconfig.Load(c, l, &cfg); err != nil {
+		// Load the cli and env configuration into bootstrap
+		if err := cliconfig.Load(c, l, cfg); err != nil {
+			l.Fatal("%s", err)
+		}
+
+		var experimentsCfg struct {
+			Experiments []string `cli:"experiment" normalize:"list"`
+		}
+
+		if err := cliconfig.Load(c, l, &experimentsCfg); err != nil {
 			l.Fatal("%s", err)
 		}
 
 		// Enable experiments
-		for _, name := range cfg.Experiments {
+		for _, name := range experimentsCfg.Experiments {
 			experiments.Enable(name)
 		}
 
@@ -312,7 +279,7 @@ var BootstrapCommand = cli.Command{
 		}
 
 		// Turn of PTY support if we're on Windows
-		runInPty := cfg.PTY
+		runInPty := cfg.RunInPty
 		if runtime.GOOS == "windows" {
 			runInPty = false
 		}
