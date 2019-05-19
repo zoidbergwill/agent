@@ -51,7 +51,7 @@ func newGitRepository() (*gitRepository, error) {
 
 func (gr *gitRepository) Add(path string) error {
 	if _, err := gr.Execute("add", path); err != nil {
-		return err
+		return fmt.Errorf("Failed adding %v to repository %v: %v", path, gr.Path, err)
 	}
 	return nil
 }

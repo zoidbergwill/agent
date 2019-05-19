@@ -209,7 +209,14 @@ func (b *BootstrapTester) ExpectLocalHook(name string) *bintest.Expectation {
 		panic(err)
 	}
 
-	if err = b.Repo.Add(hookPath); err != nil {
+	// Use a relative path to avoid the horrors of windows short paths
+	// causing git issues ("X is outside repository")
+	relHookPath, err := filepath.Rel(b.Repo.Path, hookPath)
+	if err != nil {
+		panic(err)
+	}
+
+	if err = b.Repo.Add(relHookPath); err != nil {
 		panic(err)
 	}
 	if err = b.Repo.Commit("Added local hook file %s", name); err != nil {
