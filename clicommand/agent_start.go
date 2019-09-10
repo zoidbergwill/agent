@@ -2,6 +2,8 @@ package clicommand
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/pprof"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -79,6 +81,7 @@ type AgentStartConfig struct {
 	MetricsDatadogHost         string   `cli:"metrics-datadog-host"`
 	Spawn                      int      `cli:"spawn"`
 	LogFormat                  string   `cli:"log-format"`
+	ProfileServer              bool     `cli:"profile-server"`
 
 	// Global flags
 	Debug       bool     `cli:"debug"`
@@ -97,6 +100,23 @@ type AgentStartConfig struct {
 	MetaDataEC2                  bool     `cli:"meta-data-ec2" deprecated-and-renamed-to:"TagsFromEC2"`
 	MetaDataEC2Tags              bool     `cli:"meta-data-ec2-tags" deprecated-and-renamed-to:"TagsFromEC2Tags"`
 	MetaDataGCP                  bool     `cli:"meta-data-gcp" deprecated-and-renamed-to:"TagsFromGCP"`
+}
+
+func startProfileServer(l logger.Logger) {
+	// Start a pprof handler
+	r := http.NewServeMux()
+	r.HandleFunc("/debug/pprof/", pprof.Index)
+	r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	r.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
+	r.Handle("/debug/pprof/heap", pprof.Handler("heap"))
+	r.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
+	r.Handle("/debug/pprof/block", pprof.Handler("block"))
+	go func() {
+		l.Debug("Started a pprof handler on %s", `http://localhost:8080/debug/pprof/`)
+		_ = http.ListenAndServe(":8080", r)
+	}()
 }
 
 func DefaultShell() string {
@@ -356,6 +376,10 @@ var AgentStartCommand = cli.Command{
 			Value:  1,
 			EnvVar: "BUILDKITE_AGENT_SPAWN",
 		},
+		cli.BoolFlag{
+			Name:  "profile-server",
+			Usage: "Start a pprof server for profiling on http://localhost:8080",
+		},
 
 		// API Flags
 		AgentRegisterTokenFlag,
@@ -416,6 +440,11 @@ var AgentStartCommand = cli.Command{
 		}
 
 		l := CreateLogger(cfg)
+
+		// Start profiling asap
+		if cfg.ProfileServer {
+			startProfileServer(l)
+		}
 
 		// Show warnings now we have a logger
 		for _, warning := range warnings {
