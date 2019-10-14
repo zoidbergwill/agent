@@ -236,7 +236,7 @@ var AgentStartCommand = cli.Command{
 		},
 		cli.StringFlag{
 			Name:   "git-clone-flags",
-			Value:  "-v",
+			Value:  "-v --dissociate",
 			Usage:  "Flags to pass to the \"git clone\" command",
 			EnvVar: "BUILDKITE_GIT_CLONE_FLAGS",
 		},
