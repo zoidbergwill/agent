@@ -1058,8 +1058,10 @@ func (b *Bootstrap) updateGitMirror() (string, error) {
 		return "", err
 	}
 
-	// Update our mirror
-	if err := b.shell.Run("git", "--git-dir", mirrorDir, "remote", "update", "--prune"); err != nil {
+	// Update our mirror, but just the branch requested. Otherwise on huge repositories this can be
+	// exceedingly slows to run
+	gitFetchFlags := fmt.Sprintf("--git-dir %q %s", mirrorDir, b.GitFetchFlags)
+	if err := gitFetch(b.shell, gitFetchFlags, "origin", b.Branch); err != nil {
 		return "", err
 	}
 
