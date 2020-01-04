@@ -1,5 +1,11 @@
 FROM centos:7.7.1908
 
+RUN set -ex; \
+    groupadd -r buildkite --gid=9999; \
+	useradd -r -g buildkite --uid=9999 buildkite; \
+	mkdir -p /home/buildkite; \
+	chown -R buildkite: /home/buildkite
+
 RUN yum -y install \
       curl \
       ca-certificates \
