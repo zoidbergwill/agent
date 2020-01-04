@@ -34,6 +34,15 @@ RUN mkdir -p /buildkite/builds /buildkite/hooks /buildkite/plugins \
     && curl -Lfs -o /usr/local/bin/ssh-env-config.sh https://raw.githubusercontent.com/buildkite/docker-ssh-env-config/master/ssh-env-config.sh \
     && chmod +x /usr/local/bin/ssh-env-config.sh
 
+RUN set -ex; \
+    curl -kSs -o/etc/yum.repos.d/bazel.repo https://copr.fedorainfracloud.org/coprs/vbatts/bazel/repo/epel-7/vbatts-bazel-epel-7.repo; \
+    yum install -y \
+	  bazel \
+	  gcc \
+	  ; \
+    yum clean all; \
+    rm -rf /var/cache/yum*
+
 COPY ./buildkite-agent.cfg /buildkite/buildkite-agent.cfg
 COPY ./buildkite-agent /usr/local/bin/buildkite-agent
 COPY ./entrypoint.sh /usr/local/bin/buildkite-agent-entrypoint
