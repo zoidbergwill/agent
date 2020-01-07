@@ -6,6 +6,8 @@ RUN set -ex; \
 	mkdir -p /home/buildkite; \
 	chown -R buildkite: /home/buildkite
 
+ENV HOME /home/buildkite
+
 RUN yum -y install \
       curl \
       ca-certificates \

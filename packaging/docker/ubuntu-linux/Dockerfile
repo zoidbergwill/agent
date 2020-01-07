@@ -1,6 +1,14 @@
 FROM ubuntu:18.04
 
-ENV DEBIAN_FRONTEND=noninteractive
+RUN set -ex; \
+    groupadd -r buildkite --gid=9999; \
+    useradd -r -g buildkite --uid=9999 buildkite; \
+    mkdir -p /home/buildkite; \
+    chown -R buildkite: /home/buildkite
+
+ENV HOME /home/buildkite
+
+ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       curl \

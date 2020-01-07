@@ -1,4 +1,12 @@
 FROM alpine:3.8
+ 
+RUN set -ex; \
+    groupadd -r buildkite --gid=9999; \
+    useradd -r -g buildkite --uid=9999 buildkite; \
+    mkdir -p /home/buildkite; \
+    chown -R buildkite: /home/buildkite
+
+ENV HOME /home/buildkite
 
 RUN apk add --no-cache \
       bash \
