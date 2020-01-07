@@ -39,6 +39,28 @@ COPY ./buildkite-agent.cfg /buildkite/buildkite-agent.cfg
 COPY ./buildkite-agent /usr/local/bin/buildkite-agent
 COPY ./entrypoint.sh /usr/local/bin/buildkite-agent-entrypoint
 
+# Install kubectl + jsonnet + bazel
+RUN set -ex; \
+    apt-get update; \
+    apt-get install -y \
+      apt-transport-https \
+      gnupg \
+      ; \
+    curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -; \
+    echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/sources.list.d/kubernetes.list; \
+    curl https://bazel.build/bazel-release.pub.gpg | apt-key add -; \
+    echo "deb [arch=amd64] https://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list; \
+    apt-get update; \
+    apt-get install -y \
+      bazel \
+      kubectl \
+      ; \
+    rm -rf /var/lib/apt/lists/*; \
+    curl -LkSs -o/tmp/jsonnet.tar.gz https://github.com/google/jsonnet/releases/download/v0.14.0/jsonnet-bin-v0.14.0-linux.tar.gz; \
+    tar zxvf /tmp/jsonnet.tar.gz; \
+    chmod +x jsonnet; \
+    mv jsonnet /usr/local/bin/jsonnet
+
 VOLUME /buildkite
 ENTRYPOINT ["buildkite-agent-entrypoint"]
 CMD ["start"]
